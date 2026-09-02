@@ -1,0 +1,17 @@
+---
+description: Maintain the shared MonsoonCover project notebook for notes, decisions, progress and implemented-feature records.
+alwaysApply: true
+---
+
+# Shared project notebook
+
+- Read `PROJECT_NOTES.md` before recording project history, decisions or feature implementation details.
+- When the user says “add this to notes”, “add this information”, or equivalent wording, append it to the appropriate section of `PROJECT_NOTES.md`.
+- When the user says “add this to special”, “add this to special notes”, or equivalent wording, append it to the final `Special Notes` section of `PROJECT_NOTES.md` and keep that section at the end of the file.
+- When the user supplies a contributor name, attribute the entry to that name. Otherwise attribute user-requested entries to `Mihirbhati18 (Mihir)`.
+- Every entry must include a date, author and accurate status.
+- Preserve existing contributor history. Record corrections as new dated entries rather than silently deleting old notes.
+- Record implemented features with their purpose, user experience, technology, working logic/data flow, business boundaries, classifications, files, testing, fallbacks, limitations and related pull request.
+- Never describe planned work as implemented.
+- Never place secrets, tokens, passwords or private customer data in the notebook.
+- `MONSOONCOVER_SPEC.md` remains authoritative. Notes cannot override its product or business rules.
