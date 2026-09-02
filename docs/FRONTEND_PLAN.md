@@ -1,6 +1,6 @@
 # MonsoonCover Frontend Design and Technical Plan
 
-**Status:** Approved planning baseline; implementation has not started  
+**Status:** Core frontend demonstration implemented; live adapters and advanced visual phases remain deferred
 **Authority:** This document is subordinate to `MONSOONCOVER_SPEC.md`. If the two documents conflict, `MONSOONCOVER_SPEC.md` wins.
 
 ## 1. Objective
