@@ -1,0 +1,23 @@
+---
+description: Enforce the frozen MonsoonCover specification and evidence boundaries
+alwaysApply: true
+---
+
+# MonsoonCover Source of Truth
+
+- Read `MONSOONCOVER_SPEC.md` completely before planning or changing the project.
+- Treat that file as authoritative. Do not silently contradict or weaken it.
+- Do not start a later development phase until the current phase exit gate passes.
+- Do not change frozen product, policy, workflow, architecture, or security decisions without explicit owner approval and a specification version update.
+- Classify critical facts, values, datasets, and demo claims as `REAL`, `DERIVED`, or `SIMULATED`.
+- Require authoritative evidence for `REAL`, reproducible inputs and transformations for `DERIVED`, and visible disclosure for `SIMULATED`.
+- Never imply a lender, insurer, data provider, or regulator is a project partner without documented authorization.
+- MonsoonCover never lends, underwrites, issues insurance, holds funds, or approves claims.
+- Keep risk scoring, policy eligibility, deterministic trigger evaluation, insurer decision, payout, lender posting, and reconciliation separate.
+- The Trigger Engine may create only a trigger candidate; it must never approve a claim.
+- Preserve immutable accepted-policy snapshots, provenance, audit events, correlation IDs, idempotency, and reconciliation.
+- Use synthetic borrower and loan data only. Never commit credentials or real sensitive personal data.
+- Maintain sandbox and Demo Mode labels in code, UI, tests, documentation, and presentations.
+- Prefer a narrow, tested, offline-capable workflow over extra features or integrations.
+- For every pull request, identify the relevant specification section and test the affected invariants.
+
