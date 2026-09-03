@@ -1,0 +1,23 @@
+# Optional reproducible environment (MONSOONCOVER_SPEC.md §11.2: "Docker
+# Compose optional; direct local startup fallback mandatory"). The backend
+# also runs directly against a locally installed PostgreSQL — see
+# backend/README.md.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: monsooncover
+      POSTGRES_PASSWORD: monsooncover
+      POSTGRES_DB: monsooncover
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monsooncover"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
