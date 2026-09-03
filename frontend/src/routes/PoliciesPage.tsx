@@ -1,6 +1,7 @@
 import { CanonicalStateBadge, DataClassificationBadge } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
 import { PageIntro } from '../components/foundation/PageIntro'
+import { GlassSurface } from '../visuals/glass/GlassSurface'
 
 const gates = [
   ['Policy wording reference', 'RECORDED', 'Public/reference structure noted; commercial applicability is not claimed.'],
@@ -15,7 +16,7 @@ export function PoliciesPage() {
       <PageIntro eyebrow="Reference and demo terms" title="Policies" description="Inspect versioned policy references, accepted borrower snapshots, and evidence-gate status without implying a live insurer product or partnership." />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="surface-card p-5 sm:p-6" aria-labelledby="policy-reference-heading">
+        <GlassSurface as="section" className="p-5 sm:p-6" aria-labelledby="policy-reference-heading">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="section-kicker">Demo term sheet · v1.0</p>
@@ -41,7 +42,7 @@ export function PoliciesPage() {
               </div>
             ))}
           </dl>
-        </section>
+        </GlassSurface>
 
         <section className="surface-card p-5 sm:p-6" aria-labelledby="snapshot-heading">
           <div className="flex items-start justify-between gap-3">

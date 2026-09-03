@@ -6,6 +6,7 @@ import {
 } from '../components/data-integrity/Badges'
 import { MonsoonMark } from '../visuals/MonsoonMark'
 import { LiquidWeatherCanvas } from '../visuals/LiquidWeatherCanvas'
+import { GlassSurface } from '../visuals/glass/GlassSurface'
 
 const metrics = [
   { label: 'Synthetic MSMEs', value: '128', detail: 'Illustrative portfolio records' },
@@ -105,7 +106,7 @@ export function OverviewPage() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => (
-            <article key={metric.label} className="metric-glass group min-h-40 p-5">
+            <GlassSurface as="article" key={metric.label} className="group min-h-40 p-5">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-medium text-slate-400">{metric.label}</p>
                 <DataClassificationBadge classification="SIMULATED" />
@@ -114,7 +115,7 @@ export function OverviewPage() {
                 {metric.value}
               </p>
               <p className="mt-2 text-xs leading-5 text-slate-500">{metric.detail}</p>
-            </article>
+            </GlassSurface>
           ))}
         </div>
       </section>

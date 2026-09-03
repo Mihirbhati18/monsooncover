@@ -1,5 +1,6 @@
 import { CanonicalStateBadge, DataClassificationBadge } from '../components/data-integrity/Badges'
 import { PageIntro } from '../components/foundation/PageIntro'
+import { GlassSurface } from '../visuals/glass/GlassSurface'
 
 const records = [
   { id: 'MC-REC-001', borrower: 'Kaveri Foods', insurer: '₹40,000 · PAID', lender: '₹40,000 · POSTED', result: 'RECONCILED' },
@@ -27,7 +28,7 @@ export function ReconciliationPage() {
         ))}
       </section>
 
-      <section className="rounded-2xl border border-danger/25 bg-danger/7 p-5 sm:p-6" aria-labelledby="mismatch-heading">
+      <GlassSurface as="section" tint="danger" className="rounded-2xl p-5 sm:p-6" aria-labelledby="mismatch-heading">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <p className="section-kicker text-danger/70">Exception · MC-EXC-0007</p>
@@ -36,7 +37,7 @@ export function ReconciliationPage() {
           </div>
           <CanonicalStateBadge state="MISMATCH" />
         </div>
-      </section>
+      </GlassSurface>
 
       <section className="surface-card overflow-hidden" aria-labelledby="reconciliation-register-heading">
         <div className="border-b border-white/7 p-5 sm:p-6">
