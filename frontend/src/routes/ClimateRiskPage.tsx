@@ -1,14 +1,23 @@
 import { DataClassificationBadge } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
 import { PageIntro } from '../components/foundation/PageIntro'
+import { ExposureBarChart, type ExposureBar } from '../components/finance/ExposureBarChart'
+import { PortfolioMap } from '../components/finance/PortfolioMap'
+import { demoPortfolio } from '../features/portfolio/demoPortfolio'
 
-const locations = [
-  { city: 'Surat', borrowers: 18, exposure: '₹1.84Cr', band: 'High', width: '88%' },
-  { city: 'Bharuch', borrowers: 11, exposure: '₹92L', band: 'High', width: '76%' },
-  { city: 'Vadodara', borrowers: 27, exposure: '₹2.26Cr', band: 'Moderate', width: '58%' },
-  { city: 'Ahmedabad', borrowers: 42, exposure: '₹3.71Cr', band: 'Moderate', width: '47%' },
-  { city: 'Rajkot', borrowers: 30, exposure: '₹2.68Cr', band: 'Low', width: '29%' },
+const locations: Array<{ city: string; borrowers: number; exposureLabel: string; band: ExposureBar['band'] }> = [
+  { city: 'Surat', borrowers: 18, exposureLabel: '₹1.84Cr', band: 'High' },
+  { city: 'Bharuch', borrowers: 11, exposureLabel: '₹0.92Cr', band: 'High' },
+  { city: 'Vadodara', borrowers: 27, exposureLabel: '₹2.26Cr', band: 'Moderate' },
+  { city: 'Ahmedabad', borrowers: 42, exposureLabel: '₹3.71Cr', band: 'Moderate' },
+  { city: 'Rajkot', borrowers: 30, exposureLabel: '₹2.68Cr', band: 'Low' },
 ]
+
+const exposureChartData: ExposureBar[] = locations.map((location) => ({
+  city: location.city,
+  exposureCr: Number.parseFloat(location.exposureLabel.replace(/[₹Cr]/g, '')),
+  band: location.band,
+}))
 
 export function ClimateRiskPage() {
   return (
@@ -46,44 +55,27 @@ export function ClimateRiskPage() {
             </div>
             <DataClassificationBadge classification="SIMULATED" />
           </div>
-          <div className="relative mt-6 min-h-80 overflow-hidden rounded-xl border border-white/7 bg-deep/65 p-5">
-            <div aria-hidden="true" className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(90deg,rgb(255_255_255/0.04)_1px,transparent_1px)] [background-size:32px_32px]" />
-            <div aria-hidden="true" className="absolute -right-12 top-6 size-72 rounded-[42%_58%_64%_36%] border border-cyan/15 bg-cyan/[0.025] rotate-12" />
-            <div className="relative grid gap-3 sm:grid-cols-2">
-              {locations.map((location, index) => (
-                <div key={location.city} className={`rounded-xl border bg-panel/85 p-4 ${index === 0 ? 'border-amber/35 sm:col-span-2' : 'border-white/8'}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-200">{location.city}</p>
-                      <p className="mt-1 text-xs text-slate-500">{location.borrowers} demo borrowers</p>
-                    </div>
-                    <p className="font-mono text-sm font-semibold text-white">{location.exposure}</p>
-                  </div>
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/7">
-                    <div className="h-full rounded-full bg-gradient-to-r from-cyan to-amber" style={{ width: location.width }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="mt-6">
+            <PortfolioMap borrowers={demoPortfolio} />
           </div>
         </section>
 
         <section className="surface-card p-5 sm:p-6" aria-labelledby="concentration-heading">
           <p className="section-kicker">Exposure by location</p>
           <h2 id="concentration-heading" className="section-title">Concentration profile</h2>
-          <div className="mt-6 space-y-5">
-            {locations.map((location) => (
-              <div key={location.city}>
-                <div className="flex items-center justify-between gap-4 text-xs">
-                  <span className="font-medium text-slate-300">{location.city}</span>
-                  <span className="font-mono text-slate-500">{location.exposure} · {location.band}</span>
-                </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-deep">
-                  <div className="h-full rounded-full bg-monsoon" style={{ width: location.width }} />
-                </div>
-              </div>
-            ))}
+          <div className="mt-6">
+            <ExposureBarChart data={exposureChartData} />
           </div>
+          <ul className="mt-4 space-y-1.5">
+            {locations.map((location) => (
+              <li key={location.city} className="flex items-center justify-between gap-4 text-xs">
+                <span className="font-medium text-slate-300">
+                  {location.city} <span className="text-slate-600">· {location.borrowers} borrowers</span>
+                </span>
+                <span className="font-mono text-slate-500">{location.exposureLabel} · {location.band}</span>
+              </li>
+            ))}
+          </ul>
           <div className="mt-6 rounded-xl border border-cyan/15 bg-cyan/5 p-4">
             <p className="text-xs font-semibold text-cyan">Advisory boundary</p>
             <p className="mt-1.5 text-xs leading-5 text-slate-500">No climate exposure shown here may be used to approve, deny, or price credit.</p>
