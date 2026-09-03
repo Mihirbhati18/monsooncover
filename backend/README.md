@@ -59,12 +59,19 @@ uvicorn app.main:app --reload
 pytest
 ```
 
-**Note on the test database:** these tests run against an in-memory SQLite
-database, not PostgreSQL. This is a deliberate, dependency-free substitute so
-the suite runs without a live Postgres server — every model sticks to
-portable SQLAlchemy types for exactly this reason. It is not a claim that
-SQLite is the application database; `DATABASE_URL` for the running app stays
-PostgreSQL per spec §11.2. Before a real demo rehearsal, also run the app and
-`alembic upgrade head` against actual PostgreSQL at least once (see spec §18
-and §22 Phase 6 — offline rehearsal against the real stack, not just unit
-tests, is part of the exit gate).
+**Test database:** by default the suite runs against in-memory SQLite so it
+needs no running server. The identical suite also runs against real
+PostgreSQL:
+
+```bash
+TEST_DATABASE_URL=postgresql+psycopg://monsooncover:monsooncover@localhost:5432/monsooncover_test pytest
+```
+
+**Both paths pass (132 tests).** The Postgres path is the one that exercises
+native `ENUM` types, `NUMERIC` precision and real constraint behaviour, none
+of which SQLite reproduces faithfully — so run it before a rehearsal, per
+spec §18 and §22 Phase 6.
+
+Verified on PostgreSQL 17: all five migrations apply cleanly, creating 21
+tables and 10 native enum types, and `scripts/run_demo_chain.py` produces
+identical results to the SQLite run.

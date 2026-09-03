@@ -95,12 +95,21 @@ cd frontend && npm run test   # 60 tests
 - **10 of 13 settlement-critical fields are `SIMULATED`.** No insurer term
   sheet was available. The evidence registry records exactly which fields
   those are and why.
-- **PostgreSQL has not been exercised.** The frozen stack is PostgreSQL and
-  the app targets it, but every test run so far has used SQLite because no
-  Postgres or Docker was available in the development environment. Before
-  judging, run `docker compose up -d postgres`, point `DATABASE_URL` at it,
-  run `alembic upgrade head`, and walk the demo path once. See
-  `backend/README.md`.
+- **PostgreSQL is verified.** All five migrations apply cleanly to
+  PostgreSQL 17, all 132 backend tests pass against it, and the full demo
+  chain runs on it with identical results to SQLite. To run on Postgres
+  rather than SQLite:
+
+  ```bash
+  export DATABASE_URL=postgresql+psycopg://monsooncover:monsooncover@localhost:5432/monsooncover
+  cd backend && alembic upgrade head && python -m scripts.seed_demo --reset
+  ```
+
+  To run the test suite against Postgres instead of SQLite:
+
+  ```bash
+  TEST_DATABASE_URL=postgresql+psycopg://monsooncover:monsooncover@localhost:5432/monsooncover_test pytest
+  ```
 - **Sandbox adapters hold state in process.** Restarting the backend clears
   the insurer/lender sandboxes while the database rows persist. Re-seed with
   `--reset` for a clean run rather than restarting mid-demo.

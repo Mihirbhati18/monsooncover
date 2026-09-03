@@ -1,11 +1,19 @@
 """Test fixtures.
 
 MONSOONCOVER_SPEC.md §11.2 freezes PostgreSQL as the application database.
-These tests run against SQLite instead — a dependency-free substitute so the
-suite can run without a live Postgres server (see backend/README.md for the
-tradeoff). Every model uses portable SQLAlchemy types for exactly this
-reason; nothing here relies on Postgres-only behavior.
+
+By default this suite runs against in-memory SQLite so it needs no running
+server. To run the identical suite against the real frozen stack, point
+TEST_DATABASE_URL at a PostgreSQL database:
+
+    TEST_DATABASE_URL=postgresql+psycopg://monsooncover:monsooncover@localhost:5432/monsooncover_test pytest
+
+Both paths must pass. The Postgres path is what exercises native ENUM
+types, NUMERIC precision and real constraint behaviour, none of which
+SQLite reproduces faithfully.
 """
+
+import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,14 +26,22 @@ from app.main import app
 from app.models.user import Role
 from app.modules.auth.service import create_user
 
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+
 
 @pytest.fixture()
 def db_session():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    if TEST_DATABASE_URL:
+        engine = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+    else:
+        engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+
+    # Drop first: a Postgres run interrupted mid-test leaves tables behind.
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
