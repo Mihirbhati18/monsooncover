@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.settlement import (
+    ExceptionState,
     InsurerDecisionOutcome,
     LenderPostingState,
     PayoutState,
@@ -76,6 +77,20 @@ class InsurerDecisionRead(BaseModel):
     decided_at_utc: datetime
     approved_amount: Decimal | None
     currency: str | None
+
+
+class ExceptionCaseRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    correlation_id: str
+    case_reference: str
+    entity_type: str
+    entity_id: str
+    summary: str
+    detail: str
+    state: ExceptionState
+    opened_at_utc: datetime
 
 
 class PayoutRead(BaseModel):

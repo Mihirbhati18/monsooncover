@@ -9,6 +9,7 @@
 import type {
   AuditEvent,
   CurrentUser,
+  ExceptionCase,
   InsurerDecision,
   InsurerDecisionOutcome,
   InsurerRequest,
@@ -123,6 +124,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  listInsurerDecisions: () => request<InsurerDecision[]>('/api/v1/settlement/decisions'),
+
+  listExceptions: () => request<ExceptionCase[]>('/api/v1/settlement/exceptions'),
 
   createPayout: (decisionId: string) =>
     request<Payout>(`/api/v1/settlement/payouts/${decisionId}`, { method: 'POST' }),

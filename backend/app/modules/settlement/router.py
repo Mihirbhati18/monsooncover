@@ -16,6 +16,7 @@ from app.adapters.lender.sandbox import SandboxLenderAdapter
 from app.core.database import get_db
 from app.models.policy import BorrowerPolicySnapshot
 from app.models.settlement import (
+    ExceptionCase,
     InsurerDecision,
     InsurerRequest,
     LenderPosting,
@@ -28,6 +29,7 @@ from app.modules.auth.deps import require_role
 from app.modules.settlement import orchestrator
 from app.modules.settlement.deps import get_insurer_adapter, get_lender_adapter
 from app.schemas.workflow import (
+    ExceptionCaseRead,
     InsurerDecisionCreate,
     InsurerDecisionRead,
     InsurerRequestRead,
@@ -144,6 +146,17 @@ def create_payout(
     db.commit()
     db.refresh(payout)
     return payout
+
+
+@router.get("/decisions", response_model=list[InsurerDecisionRead])
+def list_decisions(db: Session = Depends(get_db), _user: User = Depends(VIEWERS)):
+    return list(db.scalars(select(InsurerDecision).order_by(InsurerDecision.decided_at_utc)))
+
+
+@router.get("/exceptions", response_model=list[ExceptionCaseRead])
+def list_exceptions(db: Session = Depends(get_db), _user: User = Depends(VIEWERS)):
+    """§10.2: exceptions never disappear silently, so they are readable."""
+    return list(db.scalars(select(ExceptionCase).order_by(ExceptionCase.opened_at_utc)))
 
 
 @router.get("/payouts", response_model=list[PayoutRead])
