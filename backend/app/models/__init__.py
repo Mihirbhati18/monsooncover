@@ -5,6 +5,19 @@ from app.models.climate import ClimateDataset, ClimateObservation, QualityStatus
 from app.models.idempotency import IdempotencyRecord
 from app.models.loan import Loan
 from app.models.policy import BorrowerPolicySnapshot, PolicyState, PolicyVersion
+from app.models.settlement import (
+    ExceptionCase,
+    ExceptionState,
+    InsurerDecision,
+    InsurerDecisionOutcome,
+    InsurerRequest,
+    LenderPosting,
+    LenderPostingState,
+    Payout,
+    PayoutState,
+    ReconciliationRecord,
+    ReconciliationState,
+)
 from app.models.trigger import CalculationTrace, TriggerEvaluation, TriggerOutcome
 from app.models.user import Role, User
 
@@ -16,11 +29,22 @@ __all__ = [
     "CalculationTrace",
     "ClimateDataset",
     "ClimateObservation",
+    "ExceptionCase",
+    "ExceptionState",
     "IdempotencyRecord",
+    "InsurerDecision",
+    "InsurerDecisionOutcome",
+    "InsurerRequest",
+    "LenderPosting",
+    "LenderPostingState",
     "Loan",
+    "Payout",
+    "PayoutState",
     "PolicyState",
     "PolicyVersion",
     "QualityStatus",
+    "ReconciliationRecord",
+    "ReconciliationState",
     "Role",
     "TriggerEvaluation",
     "TriggerOutcome",
