@@ -56,6 +56,20 @@ class SandboxInsurerAdapter(InsurerAdapter):
             adapter_version=self.version,
         )
 
+    def ensure_submission(self, external_request_id: str, *, submitted_at_utc: datetime) -> None:
+        """Re-registers a submission this adapter has no memory of.
+
+        The sandbox holds its state in process, so a server restart loses it
+        while the authoritative InsurerRequest row survives in the database.
+        The API uses this to rehydrate before recording a decision. A real
+        insurer adapter would not need it — the external system would be the
+        one remembering."""
+
+        self._submissions.setdefault(
+            external_request_id,
+            {"policy_snapshot_reference": None, "trigger_evidence": {}, "submitted_at_utc": submitted_at_utc},
+        )
+
     def record_decision(
         self,
         *,
