@@ -101,6 +101,18 @@ export type ReconciliationRecord = {
   difference_reason: string | null
 }
 
+export type ExceptionCase = {
+  id: string
+  correlation_id: string
+  case_reference: string
+  entity_type: string
+  entity_id: string
+  summary: string
+  detail: string
+  state: 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'CANCELLED'
+  opened_at_utc: string
+}
+
 export type AuditEvent = {
   id: string
   correlation_id: string

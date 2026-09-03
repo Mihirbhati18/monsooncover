@@ -269,6 +269,95 @@ describe('MonsoonCover frontend foundation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('is not permitted')
   })
 
+  it('renders reconciliation records returned by the backend', async () => {
+    stubApi({
+      '/settlement/reconciliations': [
+        {
+          id: 'rec-1',
+          correlation_id: 'EVENT-MC-2026-00427',
+          state: 'RECONCILED',
+          insurer_amount: '40000.00',
+          lender_amount: '40000.00',
+          difference_reason: null,
+        },
+      ],
+      '/settlement/decisions': [],
+      '/settlement/payouts': [],
+      '/settlement/postings': [],
+      '/settlement/exceptions': [],
+    })
+    renderApp('/reconciliation')
+
+    expect(await screen.findByText('1 reconciliation record(s)')).toBeVisible()
+    expect(screen.getByLabelText('Canonical state: RECONCILED')).toBeVisible()
+    expect(screen.getByText('Records match')).toBeVisible()
+  })
+
+  it('shows a reconciliation mismatch as an open exception', async () => {
+    stubApi({
+      '/settlement/reconciliations': [
+        {
+          id: 'rec-2',
+          correlation_id: 'EVENT-MC-2026-00427',
+          state: 'MISMATCH',
+          insurer_amount: '40000.00',
+          lender_amount: '25000.00',
+          difference_reason: 'amount insurer=40000.00 lender=25000.00',
+        },
+      ],
+      '/settlement/decisions': [],
+      '/settlement/payouts': [],
+      '/settlement/postings': [],
+      '/settlement/exceptions': [
+        {
+          id: 'exc-1',
+          correlation_id: 'EVENT-MC-2026-00427',
+          case_reference: 'MC-EXC-abc12345',
+          entity_type: 'ReconciliationRecord',
+          entity_id: 'rec-2',
+          summary: 'Insurer and lender records disagree',
+          detail: 'amount insurer=40000.00 lender=25000.00',
+          state: 'OPEN',
+          opened_at_utc: '2026-09-04T09:00:00Z',
+        },
+      ],
+    })
+    renderApp('/reconciliation')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Insurer and lender records disagree' }),
+    ).toBeVisible()
+    expect(screen.getByLabelText('Canonical state: MISMATCH')).toBeVisible()
+    expect(screen.getAllByText(/insurer=40000.00 lender=25000.00/).length).toBeGreaterThan(0)
+  })
+
+  it('renders the real correlation-linked audit trail', async () => {
+    stubApi({
+      '/api/v1/audit': [
+        {
+          id: 'aud-1',
+          correlation_id: 'EVENT-MC-2026-00427',
+          event_type: 'TRIGGER_EVALUATED',
+          actor_type: 'user',
+          actor_id: 'user-1',
+          occurred_at_utc: '2026-09-04T09:00:00Z',
+          entity_type: 'TriggerEvaluation',
+          entity_id: 'eval-1',
+          previous_state: 'CLIMATE_MONITORING',
+          new_state: 'TRIGGER_CANDIDATE',
+          reason: 'Historical replay produced TRIGGER_CANDIDATE at 184.0 mm.',
+          classification: 'DERIVED',
+        },
+      ],
+      '/settlement/exceptions': [],
+    })
+    renderApp('/evidence-audit')
+
+    expect(await screen.findByText('TRIGGER_EVALUATED')).toBeVisible()
+    expect(screen.getByText('CLIMATE_MONITORING → TRIGGER_CANDIDATE')).toBeVisible()
+    expect(screen.getAllByText('EVENT-MC-2026-00427').length).toBeGreaterThan(0)
+  })
+
   it.each([
     ['/borrower', 'Borrower experience', 'Your climate cover is active.'],
     ['/admin', 'Platform administration', 'System health & exceptions'],
