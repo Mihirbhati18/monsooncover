@@ -54,8 +54,13 @@ RULE = {
     "strike_threshold": "160.0",
     "near_trigger_threshold": "128.0",
     "zone_id": "SURAT-DEMO-Z1",
-    "risk_period_start_local": "2026-08-27",
-    "risk_period_end_local": "2026-08-28",
+    # Cover period is the season; the trigger aggregates only the event
+    # window inside it (spec §6.5). Kept identical to scripts/seed_demo.py
+    # so the headless run and the UI demo tell the same story.
+    "risk_period_start_local": "2026-06-15",
+    "risk_period_end_local": "2026-09-30",
+    "event_window_start_local": "2026-08-27",
+    "event_window_end_local": "2026-08-28",
     "policy_timezone": "Asia/Kolkata",
     "required_provider": "HistoricalCSVProvider",
 }
