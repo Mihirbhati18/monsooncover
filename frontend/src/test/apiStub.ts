@@ -33,7 +33,13 @@ export function stubApi(routes: StubRoutes = {}): void {
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString()
-      const match = Object.keys(table).find((path) => url.includes(path))
+      // A key matching the end of the URL wins, so a specific action route
+      // like '/decision' is not shadowed by a broader collection prefix
+      // ('/settlement/insurer-requests') that also appears in the URL.
+      const candidates = Object.keys(table).filter((path) => url.includes(path))
+      const match =
+        candidates.find((path) => url.endsWith(path)) ??
+        candidates.sort((a, b) => b.length - a.length)[0]
 
       if (match === undefined) {
         return new Response(JSON.stringify({ detail: `No stub for ${url}` }), {
