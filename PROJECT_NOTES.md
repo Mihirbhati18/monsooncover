@@ -177,6 +177,25 @@ This section explains every feature after work begins: what was added, why it ex
 **Related repository:** <https://github.com/Mihirbhati18/monsooncover>, commit `9f2dad4` on `main` (pushed directly per Mihir's instruction, bypassing the usual branch-protection PR workflow to avoid losing work mid-session).  
 **Last updated by:** Claude — 2026-09-03.
 
+### Feature: GlassSurface component system
+
+**Status:** `IMPLEMENTED`  
+**Added by:** Claude, for Mihirbhati18  
+**Date:** 2026-09-03  
+**Purpose:** Deliver `docs/FRONTEND_PLAN.md` phase 6 — a reusable, lightweight React glass system replacing the ad-hoc `.metric-glass` CSS class, so glass is applied deliberately rather than copied per screen.  
+**User experience:** Selected high-priority surfaces render as tinted frosted panels with a soft rim glow; everything else stays solid navy, keeping tables and controls maximally readable.  
+**How it works:** `.metric-glass` was generalized into `.glass-surface`, whose rim and edge colors come from CSS custom properties, giving tint variants `cyan`, `amber`, `teal`, `danger` and `neutral`. `GlassSurface` wraps it in React and takes an `as` prop (`div`/`article`/`section`) so existing semantic markup is preserved.  
+**Technology used:** CSS custom properties, `backdrop-filter`, React. No new dependencies; this is an original treatment of the edge/rim/tint parameter model, not code from `liquid-glass-js`.  
+**Logic and data flow:** Purely presentational. The component takes no business data and performs no calculation.  
+**Business boundaries:** Glass is deliberately excluded from insurer decision controls, borrower consent, data tables, evidence and audit records, per plan §7.  
+**Placement (plan §6):** Dashboard and admin KPI cards, policy summary, trigger status summary and candidate alert, reconciliation exception alert, borrower coverage summary. Nothing else.  
+**Files changed:** `frontend/src/visuals/glass/GlassSurface.tsx`, `frontend/src/index.css`, and the `OverviewPage`, `AdminPage`, `PoliciesPage`, `EventsTriggersPage`, `ReconciliationPage` and `BorrowerExperiencePage` routes.  
+**Testing performed:** `npm run typecheck`, `npm run lint`, `npm run test` (17/17), `npm run build` all clean; each tint verified in a running browser with no console errors.  
+**Fallbacks and accessibility:** An `@supports` block falls back to opaque navy panels where `backdrop-filter` is unsupported, satisfying plan §10. Text sits on solid tinted backgrounds rather than over imagery, so contrast is preserved.  
+**Known limitations:** Bundle size unchanged (CSS only). Plan phases 7 (ShaderGradient hero) and 8 (R3F climate-exposure and event-replay scenes) remain unimplemented.  
+**Related repository:** commit `f62c440` on `main`.  
+**Last updated by:** Claude — 2026-09-03.
+
 ## General notes
 
 Add short facts, reminders and project information here when they do not require a full decision or feature record.
