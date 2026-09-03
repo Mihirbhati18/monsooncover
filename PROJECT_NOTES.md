@@ -193,7 +193,24 @@ This section explains every feature after work begins: what was added, why it ex
 **Testing performed:** `npm run typecheck`, `npm run lint`, `npm run test` (17/17), `npm run build` all clean; each tint verified in a running browser with no console errors.  
 **Fallbacks and accessibility:** An `@supports` block falls back to opaque navy panels where `backdrop-filter` is unsupported, satisfying plan §10. Text sits on solid tinted backgrounds rather than over imagery, so contrast is preserved.  
 **Known limitations:** Bundle size unchanged (CSS only). Plan phases 7 (ShaderGradient hero) and 8 (R3F climate-exposure and event-replay scenes) remain unimplemented.  
-**Related repository:** commit `f62c440` on `main`.  
+**Related repository:** commit `8206002` on `main`.  
+**Last updated by:** Claude — 2026-09-03.
+
+### Feature: Accessibility contract tests and bundle code-splitting
+
+**Status:** `IMPLEMENTED`  
+**Added by:** Claude, for Mihirbhati18  
+**Date:** 2026-09-03  
+**Purpose:** Begin plan phase 9 (accessibility and fallback verification) and satisfy the plan §10 lazy-loading rule, which the phase 5 map/chart work had left outstanding.  
+**User experience:** No visible change, except that the map and chart now show a brief accessible loading skeleton on first visit while their code chunk downloads.  
+**How it works:** A new `accessibility.test.tsx` asserts the plan §10 contract across all eleven routes — exactly one `main` landmark and one `h1` each, a skip link targeting `#main-content`, the persistent demo disclosure, accessible names on every filter control, and `aria-hidden` on the decorative weather canvas. It also locks the specification's role boundaries (borrower and admin roles never expose lender navigation or insurer decision controls) and covers the `GlassSurface` tint/semantics contract and the `PortfolioMap` static fallback. Separately, `lazyVisuals.tsx` wraps `PortfolioMap` and `ExposureBarChart` in `React.lazy` + `Suspense`.  
+**Technology used:** Existing Vitest and Testing Library only — no new dependencies, since the plan §9 testing packages (`playwright`, `@axe-core/playwright`) are proposals that still need agreement before installation.  
+**Business boundaries:** Tests assert role separation; they do not encode or alter any business rule.  
+**Files changed:** `frontend/src/accessibility.test.tsx`, `frontend/src/components/finance/lazyVisuals.tsx`, `frontend/src/routes/PortfolioPage.tsx`, `frontend/src/routes/ClimateRiskPage.tsx`.  
+**Testing performed:** 48 tests passing, up from 17. `typecheck`, `lint` and `build` clean; lazy chunks verified loading correctly in a running browser.  
+**Measured result:** Initial JS fell from 823 kB (241 kB gzip) to 310 kB (91 kB gzip) — a 62% reduction in initial download — with `PortfolioMap` (155 kB) and `ExposureBarChart` (358 kB) now separate on-demand chunks. The 500 kB chunk warning is resolved.  
+**Known limitations:** Accessibility checks are jsdom-based assertions, not a full axe audit; real WebGL-failure and cross-viewport responsive testing (rest of phase 9) and visual regression (phase 10) still need a browser-driving test tool. Plan phases 7 (ShaderGradient hero) and 8 (R3F scenes) remain unimplemented and would require dependencies not yet agreed.  
+**Related repository:** commits `1342ac0` and `60dbf90` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
 ## General notes
