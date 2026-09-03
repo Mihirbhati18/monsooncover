@@ -6,13 +6,16 @@ seed/reset command must recreate all synthetic records..."). Run with:
 """
 
 import argparse
+import csv
 from datetime import datetime, timezone
 from decimal import Decimal
+from pathlib import Path
 
 from sqlalchemy import select
 
 from app.core.database import Base, SessionLocal, engine
 from app.models.climate import ClimateDataset
+from app.models.evidence import EvidenceRecord
 from app.models.policy import BorrowerPolicySnapshot, PolicyState, PolicyVersion
 from app.models.user import Role
 from app.modules.auth.service import create_user, get_user_by_email
@@ -69,6 +72,36 @@ CANONICAL_LOAN = {
     "outstanding_amount": Decimal("840000.00"),
     "currency": "INR",
 }
+
+
+EVIDENCE_CSV = Path(__file__).resolve().parents[2] / "evidence" / "evidence_registry.csv"
+
+
+def _seed_evidence(db) -> int:
+    """Loads evidence/evidence_registry.csv (spec §4.4) into the database.
+
+    The CSV is the authored index; this keeps the running system and the
+    reviewable file in step rather than maintaining two truths."""
+
+    if not EVIDENCE_CSV.exists():
+        print(f"WARNING: {EVIDENCE_CSV} not found; activation gate will block.")
+        return 0
+
+    loaded = 0
+    with EVIDENCE_CSV.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if db.scalar(select(EvidenceRecord).where(EvidenceRecord.evidence_id == row["evidence_id"])):
+                continue
+            db.add(
+                EvidenceRecord(
+                    **{key: (value or None) for key, value in row.items() if key != "review_status"},
+                    review_status=row.get("review_status") or "DRAFT",
+                    registered_at_utc=datetime.now(timezone.utc),
+                )
+            )
+            loaded += 1
+    db.flush()
+    return loaded
 
 
 def seed(reset: bool) -> None:
@@ -147,9 +180,12 @@ def seed(reset: bool) -> None:
                 )
             )
 
+        evidence_count = _seed_evidence(db)
+
         db.commit()
         print(f"Seeded {len(DEMO_USERS)} demo users, borrower '{borrower.name}' ({borrower.id}),")
         print(f"dataset DS-MC-RAIN-2026-01 and accepted policy snapshot {SNAPSHOT_REFERENCE}.")
+        print(f"Evidence registry: {evidence_count} record(s) loaded from evidence/evidence_registry.csv.")
     finally:
         db.close()
 

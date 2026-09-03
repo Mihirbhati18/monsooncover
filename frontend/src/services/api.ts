@@ -7,9 +7,11 @@
  */
 
 import type {
+  ActivationGate,
   AuditEvent,
   Borrower,
   CurrentUser,
+  EvidenceRecord,
   ExceptionCase,
   InsurerDecision,
   InsurerDecisionOutcome,
@@ -100,6 +102,11 @@ export const api = {
   getCurrentUser: () => request<CurrentUser>('/api/v1/auth/me'),
 
   listBorrowers: () => request<Borrower[]>('/api/v1/borrowers'),
+
+  listEvidence: () => request<EvidenceRecord[]>('/api/v1/evidence'),
+
+  getActivationGate: (productCode: string) =>
+    request<ActivationGate>(`/api/v1/evidence/activation-gate/${productCode}`),
 
   listRiskAssessments: () => request<RiskAssessment[]>('/api/v1/risk/assessments'),
 
