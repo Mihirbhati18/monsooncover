@@ -1,8 +1,8 @@
 import { DataClassificationBadge } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
 import { PageIntro } from '../components/foundation/PageIntro'
-import { ExposureBarChart, type ExposureBar } from '../components/finance/ExposureBarChart'
-import { PortfolioMap } from '../components/finance/PortfolioMap'
+import type { ExposureBar } from '../components/finance/ExposureBarChart'
+import { LazyExposureBarChart, LazyPortfolioMap } from '../components/finance/lazyVisuals'
 import { demoPortfolio } from '../features/portfolio/demoPortfolio'
 
 const locations: Array<{ city: string; borrowers: number; exposureLabel: string; band: ExposureBar['band'] }> = [
@@ -56,7 +56,7 @@ export function ClimateRiskPage() {
             <DataClassificationBadge classification="SIMULATED" />
           </div>
           <div className="mt-6">
-            <PortfolioMap borrowers={demoPortfolio} />
+            <LazyPortfolioMap borrowers={demoPortfolio} />
           </div>
         </section>
 
@@ -64,7 +64,7 @@ export function ClimateRiskPage() {
           <p className="section-kicker">Exposure by location</p>
           <h2 id="concentration-heading" className="section-title">Concentration profile</h2>
           <div className="mt-6">
-            <ExposureBarChart data={exposureChartData} />
+            <LazyExposureBarChart data={exposureChartData} />
           </div>
           <ul className="mt-4 space-y-1.5">
             {locations.map((location) => (

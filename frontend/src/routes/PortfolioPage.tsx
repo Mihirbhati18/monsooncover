@@ -6,7 +6,7 @@ import {
   DemoDataBadge,
 } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
-import { PortfolioMap } from '../components/finance/PortfolioMap'
+import { LazyPortfolioMap } from '../components/finance/lazyVisuals'
 import {
   demoPortfolio,
   type ClimateRiskBand,
@@ -140,7 +140,7 @@ export function PortfolioPage() {
           <p className="text-xs text-slate-500">City-level markers, illustrative only</p>
         </div>
         <div className="mt-5">
-          <PortfolioMap borrowers={filteredBorrowers} />
+          <LazyPortfolioMap borrowers={filteredBorrowers} />
         </div>
       </section>
 
