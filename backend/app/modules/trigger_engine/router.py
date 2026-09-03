@@ -21,7 +21,13 @@ from app.models.user import Role, User
 from app.modules.audit.service import record_audit_event
 from app.modules.auth.deps import require_role
 from app.modules.trigger_engine.engine import TriggerRuleError, evaluate
-from app.schemas.workflow import ReplayRequest, TriggerEvaluationDetail, TriggerEvaluationRead
+from app.schemas.workflow import (
+    DryRunRequest,
+    DryRunResult,
+    ReplayRequest,
+    TriggerEvaluationDetail,
+    TriggerEvaluationRead,
+)
 
 router = APIRouter(prefix="/triggers", tags=["triggers"])
 
@@ -131,6 +137,75 @@ def run_historical_replay(
     db.refresh(evaluation)
     db.refresh(trace)
     return _detail(evaluation, trace)
+
+
+@router.post("/dry-run", response_model=DryRunResult)
+def run_dry_run(
+    payload: DryRunRequest,
+    db: Session = Depends(get_db),
+    _user: User = Depends(OPERATORS),
+):
+    """Evaluates a proposed, inactive configuration against stored history.
+
+    §6.7: "Dry Run never creates claims, payouts, lender postings, or
+    borrower notifications. Its purpose is configuration validation and
+    basis-risk explanation, not actuarial certification."
+
+    This handler writes nothing at all — no evaluation, no trace, not even
+    an audit row — so it can be re-run freely while reviewing a
+    configuration. `test_dry_run_persists_nothing` asserts that by counting
+    rows before and after.
+    """
+
+    observations = list(
+        db.scalars(select(ClimateObservation).where(ClimateObservation.zone_id == payload.zone_id))
+    )
+    if not observations:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"No observations are held for zone {payload.zone_id}.",
+        )
+
+    proposed_rule = {
+        "peril": "EXTREME_RAINFALL",
+        "parameter": "precipitation",
+        "normalized_unit": "mm",
+        "aggregation": "SUM",
+        "strike_threshold": str(payload.strike_threshold),
+        "near_trigger_threshold": str(payload.near_trigger_threshold),
+        "zone_id": payload.zone_id,
+        "risk_period_start_local": payload.event_window_start_local,
+        "risk_period_end_local": payload.event_window_end_local,
+        "event_window_start_local": payload.event_window_start_local,
+        "event_window_end_local": payload.event_window_end_local,
+        "policy_timezone": "Asia/Kolkata",
+        "required_provider": "HistoricalCSVProvider",
+    }
+
+    try:
+        result = evaluate(
+            snapshot_reference="a proposed configuration (dry run — no accepted snapshot)",
+            trigger_rule=proposed_rule,
+            observations=observations,
+        )
+    except TriggerRuleError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+
+    screening = next(step for step in result.steps if step["step"] == "observations_screened")
+
+    return DryRunResult(
+        outcome=result.outcome,
+        observed_value=result.observed_value,
+        strike_threshold=result.strike_threshold,
+        near_trigger_threshold=result.near_trigger_threshold,
+        normalized_unit=result.normalized_unit,
+        window_start_local=result.window_start_local,
+        window_end_local=result.window_end_local,
+        eligible_observation_count=screening["value"]["eligible"],
+        excluded_observation_count=len(screening["value"]["excluded"]),
+        inputs_digest=result.inputs_digest,
+        trace_steps=result.steps,
+    )
 
 
 @router.get("", response_model=list[TriggerEvaluationRead])

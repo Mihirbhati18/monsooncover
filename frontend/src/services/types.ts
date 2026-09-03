@@ -47,6 +47,21 @@ export type TriggerEvaluation = {
   evaluated_at_utc: string
 }
 
+export type DryRunResult = {
+  outcome: TriggerOutcome
+  observed_value: string
+  strike_threshold: string
+  near_trigger_threshold: string
+  normalized_unit: string
+  window_start_local: string
+  window_end_local: string
+  eligible_observation_count: number
+  excluded_observation_count: number
+  inputs_digest: string
+  trace_steps: TraceStep[]
+  persisted: boolean
+}
+
 export type TriggerEvaluationDetail = TriggerEvaluation & {
   trace_steps: TraceStep[]
   inputs_digest: string

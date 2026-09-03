@@ -70,7 +70,19 @@ def banner(text: str) -> None:
     print(f"\n{'=' * 72}\n{text}\n{'=' * 72}")
 
 
-def main() -> None:
+def main(reset: bool) -> None:
+    if not reset:
+        print(
+            "This script builds its own scenario and needs an empty database.\n"
+            "It will DROP every table in:\n"
+            f"  {engine.url.render_as_string(hide_password=True)}\n\n"
+            "Re-run with --reset to confirm:\n"
+            "  python -m scripts.run_demo_chain --reset\n\n"
+            "Refusing to drop tables without that flag. (An earlier version dropped\n"
+            "silently and wiped a seeded demo database mid-session.)"
+        )
+        raise SystemExit(1)
+
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -224,4 +236,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run the full spec §25 chain headlessly.")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Confirm dropping and recreating every table before the run.",
+    )
+    main(reset=parser.parse_args().reset)
