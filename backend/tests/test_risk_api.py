@@ -138,6 +138,26 @@ class TestRiskAssessmentEndpoint:
         assert body["observation_count"] == 1
         assert body["zone_id"] == "SURAT-DEMO-Z1"
 
+    def test_assessing_a_zone_with_no_observations_is_refused(self, client, db_session, seeded):
+        """§6.5: missing data must surface rather than pass silently. An
+        empty history would otherwise be reported as LOW exposure, which is
+        more misleading than an error."""
+        headers = lender(client, db_session)
+        empty_zone_borrower = Borrower(
+            name="No Data Traders",
+            sector="Apparel",
+            city="Bhuj",
+            state="Gujarat",
+            zone_id="BHUJ-NO-DATA-Z0",
+        )
+        db_session.add(empty_zone_borrower)
+        db_session.commit()
+
+        response = client.post(f"/api/v1/risk/assessments/{empty_zone_borrower.id}", headers=headers)
+
+        assert response.status_code == 422
+        assert "No observations are held for zone BHUJ-NO-DATA-Z0" in response.json()["detail"]
+
     def test_a_borrower_role_cannot_run_an_assessment(self, client, db_session, seeded):
         make_user(db_session, role=Role.BORROWER, email="borrower@test.local")
         headers = auth_headers(client, email="borrower@test.local")
