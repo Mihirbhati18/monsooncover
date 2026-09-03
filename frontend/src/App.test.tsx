@@ -27,6 +27,15 @@ const TRIGGER_DETAIL = {
   ],
 }
 
+const INSURER_REQUEST = {
+  id: 'req-1',
+  external_request_id: 'INS-REQ-00001',
+  correlation_id: 'EVENT-MC-2026-00427',
+  evaluation_id: 'eval-1',
+  submitted_at_utc: '2026-09-03T12:01:00Z',
+  adapter_name: 'SandboxInsurerAdapter',
+}
+
 beforeEach(() => {
   signInForTests()
   stubApi({ '/api/v1/triggers': [] })
@@ -186,21 +195,78 @@ describe('MonsoonCover frontend foundation', () => {
     expect(screen.getByRole('heading', { name: 'Insurer review' })).toBeVisible()
     expect(screen.getAllByRole('link', { name: 'Candidate Review' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('link', { name: 'Portfolio' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Record decision' })).toBeVisible()
   })
 
-  it('requires a reason and confirmation before a sandbox insurer decision', async () => {
-    const user = userEvent.setup()
+  it('tells the insurer when no candidate is awaiting review', async () => {
+    stubApi({ '/api/v1/settlement/insurer-requests': [] })
     renderApp('/insurer-sandbox')
+
+    expect(await screen.findByText('No candidate awaiting review')).toBeVisible()
+  })
+
+  it('shows the evidence packet and records a decision through the API', async () => {
+    const user = userEvent.setup()
+    stubApi({
+      '/api/v1/settlement/insurer-requests': [INSURER_REQUEST],
+      '/api/v1/triggers/eval-1': TRIGGER_DETAIL,
+    })
+    renderApp('/insurer-sandbox')
+
+    expect(await screen.findByRole('heading', { name: 'Evidence packet' })).toBeVisible()
+    expect(screen.getByText(/184.0 mm/)).toBeVisible()
 
     const submit = screen.getByRole('button', { name: 'Submit sandbox decision' })
     expect(submit).toBeDisabled()
+
     await user.click(screen.getByRole('button', { name: 'APPROVED' }))
-    await user.type(screen.getByRole('textbox', { name: /Decision reason/i }), 'Evidence reviewed in sandbox')
+    await user.type(
+      screen.getByRole('textbox', { name: /Decision reason/i }),
+      'Evidence reviewed against the accepted snapshot rule.',
+    )
     await user.click(screen.getByRole('checkbox'))
     expect(submit).toBeEnabled()
+
+    stubApi({
+      '/api/v1/settlement/insurer-requests': [INSURER_REQUEST],
+      '/api/v1/triggers/eval-1': TRIGGER_DETAIL,
+      '/decision': {
+        id: 'dec-1',
+        correlation_id: 'EVENT-MC-2026-00427',
+        outcome: 'APPROVED',
+        reason: 'Evidence reviewed against the accepted snapshot rule.',
+        decided_by: 'insurer@demo.monsooncover.local',
+        decided_at_utc: '2026-09-03T12:05:00Z',
+        approved_amount: '40000.00',
+        currency: 'INR',
+      },
+    })
     await user.click(submit)
-    expect(screen.getByText('Sandbox decision recorded: APPROVED')).toBeVisible()
+
+    expect(await screen.findByText('Sandbox decision recorded: APPROVED')).toBeVisible()
+  })
+
+  it('surfaces the server refusing a decision from the wrong role', async () => {
+    const user = userEvent.setup()
+    stubApi({
+      '/api/v1/settlement/insurer-requests': [INSURER_REQUEST],
+      '/api/v1/triggers/eval-1': TRIGGER_DETAIL,
+      '/decision': new Response(
+        JSON.stringify({ detail: "Role 'lender' is not permitted to perform this action." }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      ),
+    })
+    renderApp('/insurer-sandbox')
+
+    await screen.findByRole('heading', { name: 'Evidence packet' })
+    await user.click(screen.getByRole('button', { name: 'REJECTED' }))
+    await user.type(
+      screen.getByRole('textbox', { name: /Decision reason/i }),
+      'Attempting a decision from a role that may not make one.',
+    )
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'Submit sandbox decision' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('is not permitted')
   })
 
   it.each([

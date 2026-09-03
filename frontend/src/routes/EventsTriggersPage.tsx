@@ -21,6 +21,8 @@ export function EventsTriggersPage() {
   const [evaluation, setEvaluation] = useState<TriggerEvaluationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submittedRequest, setSubmittedRequest] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadLatest = useCallback(async () => {
@@ -46,12 +48,27 @@ export function EventsTriggersPage() {
   async function runReplay() {
     setRunning(true)
     setError(null)
+    setSubmittedRequest(null)
     try {
       setEvaluation(await api.runReplay(SNAPSHOT_REFERENCE, CORRELATION_ID))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Replay failed')
     } finally {
       setRunning(false)
+    }
+  }
+
+  async function submitForReview() {
+    if (evaluation === null) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const request = await api.submitToInsurer(evaluation.id)
+      setSubmittedRequest(request.external_request_id)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Submission failed')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -123,6 +140,29 @@ export function EventsTriggersPage() {
               </div>
               <CanonicalStateBadge state={evaluation.outcome} />
             </div>
+
+            {evaluation.outcome === 'TRIGGER_CANDIDATE' ? (
+              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={submitForReview}
+                  disabled={submitting || submittedRequest !== null}
+                  className="rounded-xl border border-amber/35 bg-amber/12 px-4 py-2.5 text-sm font-bold text-amber transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {submitting ? 'Submitting…' : 'Submit for insurer review'}
+                </button>
+                {submittedRequest ? (
+                  <p className="text-xs text-slate-400">
+                    Submitted as <span className="font-mono text-cyan">{submittedRequest}</span>. The
+                    insurer sandbox decides independently.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Sends the evidence packet to the insurer sandbox. It does not approve anything.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </GlassSurface>
 
           <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
