@@ -6,6 +6,7 @@ import {
   DemoDataBadge,
 } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
+import { PortfolioMap } from '../components/finance/PortfolioMap'
 import {
   demoPortfolio,
   type ClimateRiskBand,
@@ -126,6 +127,21 @@ export function PortfolioPage() {
             </p>
           </article>
         ))}
+      </section>
+
+      <section aria-labelledby="portfolio-map-heading" className="surface-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="section-kicker">Geographic footprint</p>
+            <h2 id="portfolio-map-heading" className="section-title">
+              Borrower locations
+            </h2>
+          </div>
+          <p className="text-xs text-slate-500">City-level markers, illustrative only</p>
+        </div>
+        <div className="mt-5">
+          <PortfolioMap borrowers={filteredBorrowers} />
+        </div>
       </section>
 
       <section aria-labelledby="portfolio-table-heading" className="surface-card overflow-hidden">
