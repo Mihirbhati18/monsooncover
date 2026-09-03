@@ -1,0 +1,18 @@
+{
+  "dataset_code": "DS-MC-RAIN-2026-01",
+  "classification": "SIMULATED",
+  "classification_note": "This is a SYNTHETIC dataset authored for the offline demo. It is not an observation record from any meteorological agency. Replacing it with a registered public observation dataset (and updating this manifest's source fields and checksum) is what would make it REAL under MONSOONCOVER_SPEC.md section 4.",
+  "source_organization": "MonsoonCover project (synthetic demo fixture)",
+  "source_uri_or_document": "generated-in-repository",
+  "original_filename": "surat_rainfall_2026.csv",
+  "accessed_at_utc": "2026-09-03T00:00:00Z",
+  "geographic_coverage": "Surat demo zone SURAT-DEMO-Z1, point 21.1702N 72.8311E",
+  "temporal_coverage": "2026-06-15 to 2026-09-25 (policy-local dates, Asia/Kolkata)",
+  "parameter_definitions": {
+    "precipitation": "Daily accumulated precipitation depth, millimetres, policy-local day boundary"
+  },
+  "original_sha256": "29d97cfba58731aeb433741680e85b4683ead8205db4044e1cd23c81fc5c0693",
+  "transformation_version": "historical-csv-v1",
+  "known_gaps_or_caveats": "Sparse by construction: only 14 observation days across the risk period. Values are chosen so the 2026-08-27 and 2026-08-28 records sum to 184.0 mm and cross the 160 mm demo strike threshold, exercising the TRIGGER_CANDIDATE path deterministically.",
+  "license_notes": "Synthetic project fixture; no third-party licence applies."
+}
