@@ -1,4 +1,6 @@
-from sqlalchemy import String
+from decimal import Decimal
+
+from sqlalchemy import Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -16,5 +18,12 @@ class Borrower(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     sector: Mapped[str] = mapped_column(String(255), nullable=False)
     city: Mapped[str] = mapped_column(String(255), nullable=False)
     state: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # §6.6: "A city name alone is insufficient for executable policy
+    # evaluation." Coverage must be explicit, so the borrower carries the
+    # versioned zone identifier and coordinates used for matching.
+    zone_id: Mapped[str] = mapped_column(String(128), nullable=False, default="UNZONED")
+    latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
 
     loans: Mapped[list["Loan"]] = relationship(back_populates="borrower")

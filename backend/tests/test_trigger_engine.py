@@ -111,7 +111,7 @@ class TestSpecSection65Validation:
             ({"parameter": "temperature"}, "parameter"),
             ({"unit": "cm"}, "unit"),
             ({"zone_id": "BHARUCH-DEMO-Z2"}, "zone"),
-            ({"local_date": "2026-10-15"}, "risk period"),
+            ({"local_date": "2026-10-15"}, "outside the aggregation window"),
         ],
     )
     def test_ineligible_observations_are_excluded_with_a_recorded_reason(self, kwargs, reason_fragment):
@@ -143,6 +143,56 @@ class TestSpecSection65Validation:
 
         assert result.outcome is TriggerOutcome.NO_TRIGGER
         assert result.observed_value == Decimal("10.0")
+
+
+class TestAggregationWindow:
+    """§6.5 separates the cover period from the aggregation window, so a
+    season-long policy can trigger on a short event inside it."""
+
+    SEASON_RULE = {
+        **RULE,
+        "risk_period_start_local": "2026-06-15",
+        "risk_period_end_local": "2026-09-30",
+        "event_window_start_local": "2026-08-27",
+        "event_window_end_local": "2026-08-28",
+    }
+
+    def test_the_event_window_narrows_which_observations_count(self):
+        result = evaluate(
+            snapshot_reference="MC-PS-1",
+            trigger_rule=self.SEASON_RULE,
+            observations=[
+                make_observation(value="120.0", local_date="2026-08-27"),
+                make_observation(value="64.0", local_date="2026-08-28"),
+                # Inside the season, outside the event window.
+                make_observation(value="500.0", local_date="2026-07-01"),
+            ],
+        )
+
+        assert result.observed_value == Decimal("184.0")
+        assert result.window_start_local == "2026-08-27"
+        assert result.window_end_local == "2026-08-28"
+
+    def test_the_trace_reports_both_the_window_and_the_cover_period(self):
+        result = evaluate(
+            snapshot_reference="MC-PS-1",
+            trigger_rule=self.SEASON_RULE,
+            observations=[make_observation(value="184.0")],
+        )
+        loaded = next(step for step in result.steps if step["step"] == "rule_loaded")
+
+        assert "between 2026-08-27 and 2026-08-28" in loaded["description"]
+        assert "Cover period 2026-06-15..2026-09-30" in loaded["description"]
+
+    def test_a_rule_without_an_event_window_still_uses_the_risk_period(self):
+        result = evaluate(
+            snapshot_reference="MC-PS-1",
+            trigger_rule=RULE,
+            observations=[make_observation(value="184.0")],
+        )
+
+        assert result.window_start_local == RULE["risk_period_start_local"]
+        assert result.outcome is TriggerOutcome.TRIGGER_CANDIDATE
 
 
 class TestDeterminism:

@@ -8,6 +8,7 @@
 
 import type {
   AuditEvent,
+  Borrower,
   CurrentUser,
   ExceptionCase,
   InsurerDecision,
@@ -15,7 +16,9 @@ import type {
   InsurerRequest,
   LenderPosting,
   Payout,
+  PolicyEligibility,
   ReconciliationRecord,
+  RiskAssessment,
   TriggerEvaluation,
   TriggerEvaluationDetail,
 } from './types'
@@ -95,6 +98,21 @@ export async function login(email: string, password: string): Promise<string> {
 
 export const api = {
   getCurrentUser: () => request<CurrentUser>('/api/v1/auth/me'),
+
+  listBorrowers: () => request<Borrower[]>('/api/v1/borrowers'),
+
+  listRiskAssessments: () => request<RiskAssessment[]>('/api/v1/risk/assessments'),
+
+  assessBorrowerRisk: (borrowerId: string) =>
+    request<RiskAssessment>(`/api/v1/risk/assessments/${borrowerId}`, { method: 'POST' }),
+
+  listEligibility: () => request<PolicyEligibility[]>('/api/v1/policies/eligibility'),
+
+  checkEligibility: (borrowerId: string) =>
+    request<PolicyEligibility>(`/api/v1/policies/eligibility/${borrowerId}`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
 
   listTriggerEvaluations: () => request<TriggerEvaluation[]>('/api/v1/triggers'),
 

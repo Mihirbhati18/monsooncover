@@ -15,7 +15,15 @@ def get_borrower(db: Session, borrower_id: str) -> Borrower | None:
 
 
 def create_borrower(db: Session, data: BorrowerCreate, *, actor_id: str) -> Borrower:
-    borrower = Borrower(name=data.name, sector=data.sector, city=data.city, state=data.state)
+    borrower = Borrower(
+        name=data.name,
+        sector=data.sector,
+        city=data.city,
+        state=data.state,
+        zone_id=data.zone_id,
+        latitude=data.latitude,
+        longitude=data.longitude,
+    )
     db.add(borrower)
     db.flush()
 

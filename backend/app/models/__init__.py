@@ -5,6 +5,7 @@ from app.models.climate import ClimateDataset, ClimateObservation, QualityStatus
 from app.models.idempotency import IdempotencyRecord
 from app.models.loan import Loan
 from app.models.policy import BorrowerPolicySnapshot, PolicyState, PolicyVersion
+from app.models.risk import ExposureBand, PolicyEligibility, RiskAssessment
 from app.models.settlement import (
     ExceptionCase,
     ExceptionState,
@@ -31,6 +32,9 @@ __all__ = [
     "ClimateObservation",
     "ExceptionCase",
     "ExceptionState",
+    "ExposureBand",
+    "PolicyEligibility",
+    "RiskAssessment",
     "IdempotencyRecord",
     "InsurerDecision",
     "InsurerDecisionOutcome",

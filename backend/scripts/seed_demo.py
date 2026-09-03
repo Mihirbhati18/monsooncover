@@ -32,8 +32,15 @@ TRIGGER_RULE = {
     "strike_threshold": "160.0",
     "near_trigger_threshold": "128.0",
     "zone_id": "SURAT-DEMO-Z1",
-    "risk_period_start_local": "2026-08-27",
-    "risk_period_end_local": "2026-08-28",
+    # The cover period is the whole monsoon season...
+    "risk_period_start_local": "2026-06-15",
+    "risk_period_end_local": "2026-09-30",
+    # ...while the trigger aggregates only the event window inside it.
+    # Spec §6.5 treats "correct risk period" and "aggregation window" as
+    # separate checks; conflating them made the borrower ineligible for
+    # their own policy.
+    "event_window_start_local": "2026-08-27",
+    "event_window_end_local": "2026-08-28",
     "policy_timezone": "Asia/Kolkata",
     "required_provider": "HistoricalCSVProvider",
 }
@@ -51,6 +58,9 @@ CANONICAL_BORROWER = BorrowerCreate(
     sector="Textile manufacturing",
     city="Surat",
     state="Gujarat",
+    zone_id="SURAT-DEMO-Z1",
+    latitude=Decimal("21.170200"),
+    longitude=Decimal("72.831100"),
 )
 CANONICAL_LOAN = {
     "loan_type": "Working-capital loan",

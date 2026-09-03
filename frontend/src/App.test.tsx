@@ -269,6 +269,91 @@ describe('MonsoonCover frontend foundation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('is not permitted')
   })
 
+  it('shows a computed exposure band with the methodology that produced it', async () => {
+    stubApi({
+      '/api/v1/borrowers': [
+        { id: 'bor-1', name: 'ABC Textiles', sector: 'Textile manufacturing', city: 'Surat', state: 'Gujarat', zone_id: 'SURAT-DEMO-Z1', latitude: null, longitude: null },
+      ],
+      '/api/v1/risk/assessments': [
+        {
+          id: 'risk-1',
+          borrower_id: 'bor-1',
+          zone_id: 'SURAT-DEMO-Z1',
+          peril: 'EXTREME_RAINFALL',
+          sector: 'Textile manufacturing',
+          exposure_band: 'HIGH',
+          max_daily_value: '120.0000',
+          total_value: '387.9000',
+          heavy_day_count: 2,
+          observation_count: 14,
+          normalized_unit: 'mm',
+          methodology_version: 'risk-engine-v1',
+          methodology_steps: [
+            { step: 'band_applied', description: 'Applied methodology risk-engine-v1: max daily 120.0 >= 100 mm -> HIGH.', value: 'HIGH' },
+            { step: 'boundary', description: 'Advisory exposure only. This result does not approve or deny credit.', value: null },
+          ],
+          dataset_code: 'DS-MC-RAIN-2026-01',
+          assessed_at_utc: '2026-09-04T09:00:00Z',
+          classification: 'DERIVED',
+        },
+      ],
+      '/api/v1/policies/eligibility': [],
+    })
+    renderApp('/climate-risk')
+
+    expect(await screen.findByLabelText('Canonical state: HIGH')).toBeVisible()
+    expect(screen.getByText(/does not approve or deny credit/)).toBeVisible()
+    expect(screen.getByRole('heading', { name: /Methodology · risk-engine-v1/ })).toBeVisible()
+  })
+
+  it('shows that eligibility is decided without consulting climate exposure', async () => {
+    stubApi({
+      '/api/v1/borrowers': [
+        { id: 'bor-2', name: 'Far Away Mills', sector: 'Apparel', city: 'Rajkot', state: 'Gujarat', zone_id: 'RAJKOT-DEMO-Z9', latitude: null, longitude: null },
+      ],
+      '/api/v1/risk/assessments': [
+        {
+          id: 'risk-2',
+          borrower_id: 'bor-2',
+          zone_id: 'RAJKOT-DEMO-Z9',
+          peril: 'EXTREME_RAINFALL',
+          sector: 'Apparel',
+          exposure_band: 'HIGH',
+          max_daily_value: '120.0000',
+          total_value: '120.0000',
+          heavy_day_count: 1,
+          observation_count: 1,
+          normalized_unit: 'mm',
+          methodology_version: 'risk-engine-v1',
+          methodology_steps: [{ step: 'band_applied', description: 'HIGH.', value: 'HIGH' }],
+          dataset_code: 'DS-MC-RAIN-2026-01',
+          assessed_at_utc: '2026-09-04T09:00:00Z',
+          classification: 'DERIVED',
+        },
+      ],
+      '/api/v1/policies/eligibility': [
+        {
+          id: 'elig-1',
+          borrower_id: 'bor-2',
+          policy_version_id: 'pol-1',
+          is_eligible: false,
+          reasons: [
+            { constraint: 'geography', satisfied: false, detail: 'Borrower zone RAJKOT-DEMO-Z9 does not match covered zone SURAT-DEMO-Z1.' },
+            { constraint: 'risk_score_excluded', satisfied: true, detail: 'Climate exposure was not consulted. A risk band never creates eligibility (§7.2).' },
+          ],
+          matching_version: 'policy-matching-v1',
+          evaluated_at_utc: '2026-09-04T09:00:00Z',
+        },
+      ],
+    })
+    renderApp('/climate-risk')
+
+    // High exposure, yet not eligible - the two engines stay separate.
+    expect(await screen.findByLabelText('Canonical state: HIGH')).toBeVisible()
+    expect(screen.getByLabelText('Canonical state: NOT_COVERED')).toBeVisible()
+    expect(screen.getByText(/A risk band never creates eligibility/)).toBeVisible()
+  })
+
   it('renders reconciliation records returned by the backend', async () => {
     stubApi({
       '/settlement/reconciliations': [

@@ -101,6 +101,60 @@ export type ReconciliationRecord = {
   difference_reason: string | null
 }
 
+export type ExposureBand = 'LOW' | 'MODERATE' | 'HIGH'
+
+export type MethodologyStep = {
+  step: string
+  description: string
+  value: unknown
+}
+
+export type RiskAssessment = {
+  id: string
+  borrower_id: string
+  zone_id: string
+  peril: string
+  sector: string
+  exposure_band: ExposureBand
+  max_daily_value: string
+  total_value: string
+  heavy_day_count: number
+  observation_count: number
+  normalized_unit: string
+  methodology_version: string
+  methodology_steps: MethodologyStep[]
+  dataset_code: string
+  assessed_at_utc: string
+  classification: DataClassification
+}
+
+export type EligibilityReason = {
+  constraint: string
+  satisfied: boolean
+  detail: string
+}
+
+export type PolicyEligibility = {
+  id: string
+  borrower_id: string
+  policy_version_id: string
+  is_eligible: boolean
+  reasons: EligibilityReason[]
+  matching_version: string
+  evaluated_at_utc: string
+}
+
+export type Borrower = {
+  id: string
+  name: string
+  sector: string
+  city: string
+  state: string
+  zone_id: string
+  latitude: string | null
+  longitude: string | null
+}
+
 export type ExceptionCase = {
   id: string
   correlation_id: string

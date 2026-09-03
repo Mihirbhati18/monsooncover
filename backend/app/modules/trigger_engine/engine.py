@@ -71,6 +71,22 @@ def _validate_rule(rule: dict) -> None:
         raise TriggerRuleError("near_trigger_threshold must not exceed strike_threshold.")
 
 
+def aggregation_window(rule: dict) -> tuple[str, str]:
+    """The window whose observations are aggregated.
+
+    §6.5 lists "correct risk period" and "expected observation frequency and
+    aggregation window" as separate checks, so a policy may cover a whole
+    season while a trigger aggregates a short event window inside it. When a
+    rule omits the event window, the risk period is used, which keeps
+    single-window policies working unchanged.
+    """
+
+    return (
+        rule.get("event_window_start_local") or rule["risk_period_start_local"],
+        rule.get("event_window_end_local") or rule["risk_period_end_local"],
+    )
+
+
 def _is_eligible(observation: ClimateObservation, rule: dict) -> tuple[bool, str]:
     """Applies the §6.5 validation rules. Returns (eligible, reason)."""
 
@@ -84,8 +100,12 @@ def _is_eligible(observation: ClimateObservation, rule: dict) -> tuple[bool, str
         return False, f"unit '{observation.normalized_unit}' does not match the policy unit"
     if observation.zone_id != rule["zone_id"]:
         return False, f"zone '{observation.zone_id}' is outside the covered zone"
-    if not (rule["risk_period_start_local"] <= observation.policy_local_date <= rule["risk_period_end_local"]):
-        return False, f"local date {observation.policy_local_date} is outside the policy risk period"
+    window_start, window_end = aggregation_window(rule)
+    if not (window_start <= observation.policy_local_date <= window_end):
+        return False, (
+            f"local date {observation.policy_local_date} is outside the "
+            f"aggregation window {window_start}..{window_end}"
+        )
     return True, "eligible"
 
 
@@ -93,11 +113,12 @@ def build_evaluation_key(*, snapshot_reference: str, rule: dict) -> str:
     """Deterministic key per §13: policy snapshot, zone, risk period,
     peril/index and evaluation version."""
 
+    window_start, window_end = aggregation_window(rule)
     parts = [
         snapshot_reference,
         rule["zone_id"],
-        rule["risk_period_start_local"],
-        rule["risk_period_end_local"],
+        window_start,
+        window_end,
         rule["peril"],
         rule["parameter"],
         EVALUATION_VERSION,
@@ -127,6 +148,7 @@ def evaluate(
     strike = Decimal(str(trigger_rule["strike_threshold"]))
     near = Decimal(str(trigger_rule["near_trigger_threshold"]))
     unit = trigger_rule["normalized_unit"]
+    window_start, window_end = aggregation_window(trigger_rule)
 
     steps: list[dict] = [
         {
@@ -134,8 +156,10 @@ def evaluate(
             "description": (
                 f"Loaded accepted snapshot {snapshot_reference}: {trigger_rule['aggregation']} of "
                 f"{trigger_rule['parameter']} in {unit} over zone {trigger_rule['zone_id']} between "
-                f"{trigger_rule['risk_period_start_local']} and {trigger_rule['risk_period_end_local']} "
-                f"({trigger_rule['policy_timezone']}), settlement source {trigger_rule['required_provider']}."
+                f"{window_start} and {window_end} "
+                f"({trigger_rule['policy_timezone']}), settlement source {trigger_rule['required_provider']}. "
+                f"Cover period {trigger_rule['risk_period_start_local']}.."
+                f"{trigger_rule['risk_period_end_local']}."
             ),
             "value": None,
         }
@@ -226,8 +250,8 @@ def evaluate(
         strike_threshold=strike,
         near_trigger_threshold=near,
         normalized_unit=unit,
-        window_start_local=trigger_rule["risk_period_start_local"],
-        window_end_local=trigger_rule["risk_period_end_local"],
+        window_start_local=window_start,
+        window_end_local=window_end,
         evaluation_key=build_evaluation_key(snapshot_reference=snapshot_reference, rule=trigger_rule),
         evaluation_version=EVALUATION_VERSION,
         evaluated_at_utc=evaluated_at_utc,
