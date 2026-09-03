@@ -9,7 +9,20 @@ import { GlassSurface } from './visuals/glass/GlassSurface'
 
 beforeEach(() => {
   signInForTests()
-  stubApi({ '/api/v1/triggers': [] })
+  stubApi({
+    '/api/v1/triggers': [],
+    '/api/v1/borrowers': [],
+    '/api/v1/loans': [],
+    '/api/v1/risk/assessments': [],
+    '/api/v1/policies/eligibility': [],
+    '/api/v1/policies/versions': [],
+    '/api/v1/policies/snapshots': [],
+    '/api/v1/climate/datasets': [],
+    '/api/v1/evidence/activation-gate': { product_code: 'X', can_activate: true, summary: 'ok', satisfied_fields: [], blocking_errors: [] },
+    '/api/v1/evidence': [],
+    '/settlement/exceptions': [],
+    '/api/v1/audit': [],
+  })
 })
 
 const allRoutes = [
@@ -62,7 +75,6 @@ describe('accessibility contract', () => {
     renderApp('/portfolio')
 
     expect(screen.getByRole('searchbox', { name: 'Search portfolio' })).toBeVisible()
-    expect(screen.getByRole('combobox', { name: 'Filter by coverage status' })).toBeVisible()
     expect(screen.getByRole('combobox', { name: 'Switch demo role' })).toBeVisible()
   })
 

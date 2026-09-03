@@ -1,11 +1,21 @@
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import {
   CanonicalStateBadge,
   DataClassificationBadge,
   DemoDataBadge,
 } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
-import { demoPortfolio } from '../features/portfolio/demoPortfolio'
+import { GlassSurface } from '../visuals/glass/GlassSurface'
+import { api } from '../services/api'
+import type {
+  Borrower,
+  Loan,
+  PolicyEligibility,
+  PolicySnapshot,
+  RiskAssessment,
+  TriggerEvaluation,
+} from '../services/types'
 
 const formatInr = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -13,255 +23,232 @@ const formatInr = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 })
 
-const timeline = [
-  {
-    title: 'Coverage snapshot activated',
-    state: 'ACTIVE',
-    time: '15 Jun 2026 · 10:42 IST',
-    detail: 'Borrower-specific demo terms were frozen after recorded consent.',
-  },
-  {
-    title: 'Historical event observed',
-    state: 'EVENT_OBSERVED',
-    time: '28 Aug 2026 · 08:10 IST',
-    detail: 'A locally replayed observation was attached to this synthetic borrower record.',
-  },
-  {
-    title: 'Candidate assembled',
-    state: 'TRIGGER_CANDIDATE',
-    time: '28 Aug 2026 · 08:14 IST',
-    detail: 'Illustrative evidence was prepared for insurer-sandbox review. This is not approval.',
-  },
-  {
-    title: 'Insurer review pending',
-    state: 'PENDING',
-    time: 'Current state',
-    detail: 'Only the insurer sandbox may approve, reject, or request more information.',
-  },
-]
-
 export function BorrowerDetailPage() {
   const { borrowerId } = useParams()
-  const borrower = demoPortfolio.find((record) => record.id === borrowerId)
+  const [borrower, setBorrower] = useState<Borrower | null>(null)
+  const [loans, setLoans] = useState<Loan[]>([])
+  const [assessment, setAssessment] = useState<RiskAssessment | null>(null)
+  const [eligibility, setEligibility] = useState<PolicyEligibility | null>(null)
+  const [snapshot, setSnapshot] = useState<PolicySnapshot | null>(null)
+  const [evaluation, setEvaluation] = useState<TriggerEvaluation | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!borrower) {
-    return <Navigate to="/portfolio" replace />
+  useEffect(() => {
+    if (!borrowerId) return
+    let cancelled = false
+
+    Promise.all([
+      api.listBorrowers(),
+      api.listLoans(borrowerId),
+      api.listRiskAssessments(),
+      api.listEligibility(),
+      api.listPolicySnapshots(),
+      api.listTriggerEvaluations(),
+    ])
+      .then(([borrowers, loanList, assessments, eligibilities, snapshots, evaluations]) => {
+        if (cancelled) return
+        setBorrower(borrowers.find((item) => item.id === borrowerId) ?? null)
+        setLoans(loanList)
+        setAssessment(assessments.filter((item) => item.borrower_id === borrowerId).at(-1) ?? null)
+        setEligibility(eligibilities.find((item) => item.borrower_id === borrowerId) ?? null)
+        const ownSnapshot = snapshots.find((item) => item.borrower_id === borrowerId) ?? null
+        setSnapshot(ownSnapshot)
+        setEvaluation(
+          ownSnapshot
+            ? (evaluations.filter((item) => item.correlation_id).at(-1) ?? null)
+            : null,
+        )
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : 'Could not load borrower')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [borrowerId])
+
+  if (loading) {
+    return <div role="status" aria-label="Loading borrower" className="surface-card h-64 animate-pulse" />
   }
 
-  const isCanonicalBorrower = borrower.id === 'MC-BOR-001'
+  if (error || !borrower) {
+    return (
+      <section role="alert" className="surface-card p-8 text-center">
+        <p className="text-sm font-semibold text-danger">{error ?? 'Borrower not found'}</p>
+        <Link to="/portfolio" className="mt-3 inline-block text-xs font-semibold text-cyan hover:underline">
+          Back to portfolio
+        </Link>
+      </section>
+    )
+  }
+
+  const outstanding = loans.reduce((total, loan) => total + Number(loan.outstanding_amount), 0)
 
   return (
     <div className="space-y-6">
-      <header>
-        <Link
-          to="/portfolio"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition-colors hover:text-cyan"
-        >
-          <span aria-hidden="true">←</span>
-          Back to portfolio
-        </Link>
-        <div className="mt-5 flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <DemoDataBadge />
-              <DataClassificationBadge classification="SIMULATED" />
-              {isCanonicalBorrower && (
-                <span className="rounded-md border border-cyan/25 bg-cyan/8 px-2 py-1 text-[0.62rem] font-bold tracking-[0.12em] text-cyan">
-                  PRIMARY DEMO
-                </span>
-              )}
-            </div>
-            <p className="section-kicker mt-5">Borrower record · {borrower.id}</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-              {borrower.name}
-            </h2>
-            <p className="mt-3 text-sm text-slate-400">
-              {borrower.sector} · {borrower.city}, {borrower.state}
-            </p>
+      <header className="flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
+        <div>
+          <Link to="/portfolio" className="text-xs font-semibold text-cyan hover:underline">
+            ← Portfolio
+          </Link>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <DemoDataBadge />
+            <DataClassificationBadge classification="SIMULATED" />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <CanonicalStateBadge state={borrower.coverageStatus} />
-            <CanonicalStateBadge state={isCanonicalBorrower ? 'TRIGGER_CANDIDATE' : 'MONITORING'} />
-          </div>
+          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
+            {borrower.name}
+          </h2>
+          <p className="mt-2 font-mono text-xs text-slate-500">
+            {borrower.zone_id} · {borrower.city}, {borrower.state} · {borrower.sector}
+          </p>
         </div>
+        {snapshot ? <CanonicalStateBadge state={snapshot.state} /> : null}
       </header>
 
-      {isCanonicalBorrower && (
-        <section
-          aria-label="Trigger candidate disclosure"
-          className="rounded-2xl border border-amber/25 bg-amber/7 p-5 sm:flex sm:items-start sm:justify-between sm:gap-6"
-        >
-          <div>
-            <p className="text-sm font-semibold text-amber">Insurer decision required</p>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-amber/75">
-              MC-DEMO-00427 is a simulated trigger candidate. It is not an approved claim or
-              payout. MonsoonCover has only assembled an illustrative evidence packet.
-            </p>
+      {evaluation?.outcome === 'TRIGGER_CANDIDATE' ? (
+        <GlassSurface as="section" tint="amber" className="rounded-2xl p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div>
+              <p className="section-kicker text-amber/65">Event · {evaluation.correlation_id}</p>
+              <h3 className="mt-2 text-lg font-semibold text-amber">Insurer decision required</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-amber/75">
+                A trigger candidate was computed at {evaluation.observed_value}{' '}
+                {evaluation.normalized_unit} against a {evaluation.strike_threshold}{' '}
+                {evaluation.normalized_unit} strike. It is not an approved claim or payout.
+              </p>
+            </div>
+            <CanonicalStateBadge state={evaluation.outcome} />
           </div>
-          <CanonicalStateBadge state="TRIGGER_CANDIDATE" />
-        </section>
-      )}
+        </GlassSurface>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section aria-labelledby="facility-heading" className="surface-card p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="section-kicker">Facility</p>
-              <h2 id="facility-heading" className="section-title">
-                Working-capital context
-              </h2>
-            </div>
-            <DataClassificationBadge classification="SIMULATED" />
-          </div>
-          <dl className="mt-6 grid gap-x-6 gap-y-5 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-slate-500">Loan type</dt>
-              <dd className="mt-1.5 text-sm font-medium text-slate-200">{borrower.loanType}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">Outstanding amount</dt>
-              <dd className="mt-1.5 font-mono text-sm font-semibold text-slate-200">
-                {formatInr.format(borrower.outstandingInr)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">Original demo amount</dt>
-              <dd className="mt-1.5 font-mono text-sm font-semibold text-slate-200">
-                {formatInr.format(isCanonicalBorrower ? 1000000 : borrower.outstandingInr + 220000)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">Illustrative EMI</dt>
-              <dd className="mt-1.5 font-mono text-sm font-semibold text-slate-200">
-                {formatInr.format(isCanonicalBorrower ? 62000 : 48000)}
-              </dd>
-            </div>
-          </dl>
-          <div className="mt-6 rounded-xl border border-white/7 bg-deep/45 p-4">
-            <p className="text-xs font-semibold text-slate-300">Credit-use boundary</p>
-            <p className="mt-1.5 text-xs leading-5 text-slate-500">
-              Climate exposure is advisory portfolio intelligence. This interface does not
-              make, change, or recommend a lending decision.
-            </p>
-          </div>
-        </section>
-
-        <section aria-labelledby="coverage-heading" className="surface-card p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="section-kicker">Immutable demo reference</p>
-              <h2 id="coverage-heading" className="section-title">
-                Coverage snapshot
-              </h2>
-            </div>
-            <CanonicalStateBadge state={borrower.coverageStatus} />
-          </div>
-          <dl className="mt-6 grid gap-x-6 gap-y-5 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-slate-500">Snapshot reference</dt>
-              <dd className="mt-1.5 font-mono text-xs font-semibold text-slate-200">
-                MC-PS-2026-0142-v1
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">Primary peril</dt>
-              <dd className="mt-1.5 text-sm font-medium text-slate-200">{borrower.primaryPeril}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">Coverage window</dt>
-              <dd className="mt-1.5 text-sm font-medium text-slate-200">15 Jun – 30 Sep 2026</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-slate-500">Illustrative sum insured</dt>
-              <dd className="mt-1.5 font-mono text-sm font-semibold text-slate-200">₹40,000</dd>
-            </div>
-          </dl>
-          <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-teal/20 bg-teal/6 p-4">
-            <div>
-              <p className="text-xs font-semibold text-teal">Consent record captured</p>
-              <p className="mt-1 text-xs text-slate-500">15 Jun 2026 · Web demo · English</p>
-            </div>
-            <DataClassificationBadge classification="SIMULATED" />
-          </div>
-        </section>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <section aria-labelledby="exposure-heading" className="surface-card p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="section-kicker">Advisory only</p>
-              <h2 id="exposure-heading" className="section-title">
-                Climate exposure
-              </h2>
-            </div>
-            <DataClassificationBadge classification="SIMULATED" />
-          </div>
-          <div className="mt-6 rounded-xl border border-amber/20 bg-deep/50 p-5">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-slate-500">
-              Illustrative band
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-amber">{borrower.riskBand}</p>
-            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/6">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan via-amber to-danger"
-                style={{ width: borrower.riskBand === 'HIGH' ? '82%' : borrower.riskBand === 'MODERATE' ? '56%' : '28%' }}
-              />
-            </div>
-            <p className="mt-4 text-xs leading-5 text-slate-500">
-              Presentation fixture only. No exposure score or policy eligibility calculation
-              has run.
-            </p>
-          </div>
-        </section>
-
-        <section aria-labelledby="timeline-heading" className="surface-card p-5 sm:p-6">
-          <p className="section-kicker">Responsibility-aware chronology</p>
-          <h2 id="timeline-heading" className="section-title">
-            Coverage and event timeline
-          </h2>
-          <ol className="mt-6 space-y-0">
-            {timeline.map((event, index) => (
-              <li key={event.title} className="relative grid grid-cols-[1.5rem_1fr] gap-3 pb-5 last:pb-0">
-                {index < timeline.length - 1 && (
-                  <span aria-hidden="true" className="absolute bottom-0 left-[0.34rem] top-3 w-px bg-white/9" />
-                )}
-                <span aria-hidden="true" className="relative mt-1 size-3 rounded-full border-2 border-panel bg-cyan ring-1 ring-cyan/35" />
-                <div>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-slate-200">{event.title}</h3>
-                    <CanonicalStateBadge state={event.state} />
-                  </div>
-                  <p className="mt-1 font-mono text-[0.65rem] text-slate-600">{event.time}</p>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">{event.detail}</p>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="surface-card p-5 sm:p-6" aria-labelledby="facility-heading">
+          <p className="section-kicker">Synthetic facility</p>
+          <h3 id="facility-heading" className="section-title">Loan book</h3>
+          <dl className="mt-5 space-y-4">
+            {loans.map((loan) => (
+              <div key={loan.id} className="rounded-xl border border-white/7 bg-deep/45 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-300">{loan.loan_type}</p>
+                  <DataClassificationBadge classification="SIMULATED" />
                 </div>
-              </li>
+                <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <dt className="text-slate-500">Principal</dt>
+                    <dd className="mt-1 font-mono text-slate-300">{formatInr.format(Number(loan.principal_amount))}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">EMI</dt>
+                    <dd className="mt-1 font-mono text-slate-300">{formatInr.format(Number(loan.emi_amount))}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">Outstanding</dt>
+                    <dd className="mt-1 font-mono text-slate-300">{formatInr.format(Number(loan.outstanding_amount))}</dd>
+                  </div>
+                </div>
+              </div>
             ))}
-          </ol>
+            {loans.length === 0 ? <p className="text-xs text-slate-500">No facilities recorded.</p> : null}
+          </dl>
+          <p className="mt-4 text-[0.68rem] leading-5 text-slate-600">
+            Total outstanding {formatInr.format(outstanding)}. MonsoonCover does not make, change, or
+            recommend a lending decision.
+          </p>
+        </section>
+
+        <section className="surface-card p-5 sm:p-6" aria-labelledby="cover-heading">
+          <p className="section-kicker">Accepted terms</p>
+          <h3 id="cover-heading" className="section-title">Coverage snapshot</h3>
+          {snapshot ? (
+            <>
+              <div className="mt-5 rounded-xl border border-cyan/20 bg-deep/55 p-4">
+                <p className="font-mono text-xs font-semibold text-cyan">{snapshot.snapshot_reference}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  Immutable copy of the terms accepted on{' '}
+                  {new Date(snapshot.accepted_at_utc).toLocaleDateString()}. Later configuration
+                  changes do not alter this record.
+                </p>
+              </div>
+              <dl className="mt-4 space-y-3">
+                {(
+                  [
+                    ['Peril', snapshot.trigger_rule_snapshot.peril],
+                    ['Strike', `${snapshot.trigger_rule_snapshot.strike_threshold} ${snapshot.trigger_rule_snapshot.normalized_unit}`],
+                    ['Cover period', `${snapshot.trigger_rule_snapshot.risk_period_start_local} → ${snapshot.trigger_rule_snapshot.risk_period_end_local}`],
+                    ['Zone', snapshot.trigger_rule_snapshot.zone_id],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4 border-b border-white/6 pb-2.5 last:border-0">
+                    <dt className="text-xs text-slate-500">{label}</dt>
+                    <dd className="font-mono text-xs text-slate-300">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-4 text-xs text-teal">Consent record captured</p>
+            </>
+          ) : (
+            <p className="mt-5 text-xs text-slate-500">No accepted policy snapshot for this borrower.</p>
+          )}
         </section>
       </div>
 
-      <section aria-labelledby="record-provenance-heading" className="surface-card p-5 sm:p-6">
-        <p className="section-kicker">Record provenance</p>
-        <h2 id="record-provenance-heading" className="section-title">
-          Evidence and simulation boundaries
-        </h2>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="surface-card p-5 sm:p-6" aria-labelledby="exposure-heading">
+          <p className="section-kicker">Advisory only</p>
+          <h3 id="exposure-heading" className="section-title">Climate exposure</h3>
+          {assessment ? (
+            <>
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <CanonicalStateBadge state={assessment.exposure_band} />
+                <span className="font-mono text-xs text-slate-400">
+                  {assessment.max_daily_value} {assessment.normalized_unit} max daily
+                </span>
+              </div>
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                Computed by {assessment.methodology_version} from {assessment.observation_count}{' '}
+                observation(s) in {assessment.zone_id}. This does not approve, deny or price credit.
+              </p>
+            </>
+          ) : (
+            <p className="mt-5 text-xs text-slate-500">
+              No assessment yet. Run one from the Climate Risk screen.
+            </p>
+          )}
+        </section>
+
+        <section className="surface-card p-5 sm:p-6" aria-labelledby="eligibility-heading">
+          <p className="section-kicker">Separate engine</p>
+          <h3 id="eligibility-heading" className="section-title">Policy eligibility</h3>
+          {eligibility ? (
+            <ul className="mt-5 space-y-2">
+              {eligibility.reasons.map((reason) => (
+                <li key={reason.constraint} className="flex gap-2 text-[0.68rem] leading-5">
+                  <span className={reason.satisfied ? 'text-teal' : 'text-danger'}>
+                    {reason.satisfied ? '✓' : '✕'}
+                  </span>
+                  <span className="text-slate-500">{reason.detail}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 text-xs text-slate-500">No eligibility check has run for this borrower.</p>
+          )}
+        </section>
+      </div>
+
+      <section className="surface-card p-5 sm:p-6" aria-labelledby="borrower-provenance-heading">
+        <p className="section-kicker">Provenance</p>
+        <h3 id="borrower-provenance-heading" className="section-title">Where this came from</h3>
         <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          <SourceReference
-            classification="SIMULATED"
-            label="Borrower and loan"
-            detail="Synthetic identity and financial values; no real KYC, account, credit, or contact data is present."
-          />
-          <SourceReference
-            classification="SIMULATED"
-            label="Policy snapshot"
-            detail="Illustrative demo terms and consent. No insurer-issued policy or commercial partnership is represented."
-          />
-          <SourceReference
-            classification="SIMULATED"
-            label="Event workflow"
-            detail="Offline presentation fixture. The candidate remains subject to an independent insurer-sandbox decision."
-          />
+          <SourceReference classification="SIMULATED" label="Identity and facility" detail="Synthetic borrower and loan records; no real KYC or credit data is used." />
+          <SourceReference classification="DERIVED" label="Exposure" detail="Computed from verified observations by a documented, interpretable methodology." />
+          <SourceReference classification="SIMULATED" label="Policy terms" detail="Demo configuration held in an immutable accepted snapshot; not an insurer-issued policy." />
         </div>
       </section>
     </div>

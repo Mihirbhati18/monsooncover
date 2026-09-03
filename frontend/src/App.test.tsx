@@ -65,15 +65,58 @@ const GATE_PASSED = {
   blocking_errors: [],
 }
 
+export const BORROWER = {
+  id: 'bor-1', name: 'ABC Textiles', sector: 'Textile manufacturing', city: 'Surat',
+  state: 'Gujarat', zone_id: 'SURAT-DEMO-Z1', latitude: '21.170200', longitude: '72.831100',
+}
+
+const LOAN = {
+  id: 'loan-1', borrower_id: 'bor-1', loan_type: 'Working-capital loan',
+  principal_amount: '1000000.00', emi_amount: '62000.00', outstanding_amount: '840000.00',
+  currency: 'INR',
+}
+
+const TRIGGER_RULE = {
+  peril: 'EXTREME_RAINFALL', parameter: 'precipitation', normalized_unit: 'mm',
+  aggregation: 'SUM', strike_threshold: '160.0', near_trigger_threshold: '128.0',
+  zone_id: 'SURAT-DEMO-Z1', risk_period_start_local: '2026-06-15',
+  risk_period_end_local: '2026-09-30', event_window_start_local: '2026-08-27',
+  event_window_end_local: '2026-08-28', policy_timezone: 'Asia/Kolkata',
+  required_provider: 'HistoricalCSVProvider',
+}
+
+const POLICY_VERSION = {
+  id: 'pv-1', product_code: 'MC-DEMO-POL-RAIN-01', version: '1.0',
+  display_name: 'Extreme rainfall protection reference', trigger_rule: TRIGGER_RULE,
+  disclosure_version: 'v1', classification: 'SIMULATED',
+}
+
+const POLICY_SNAPSHOT = {
+  id: 'snap-1', snapshot_reference: 'MC-PS-2026-0142-v1', borrower_id: 'bor-1',
+  loan_id: 'loan-1', policy_version_id: 'pv-1', trigger_rule_snapshot: TRIGGER_RULE,
+  disclosure_version: 'v1', consent_recorded_at_utc: '2026-06-15T00:00:00Z',
+  accepted_at_utc: '2026-06-15T00:00:00Z', snapshot_checksum: 'demo-snapshot-checksum',
+  state: 'ACTIVE',
+}
+
+const DEFAULT_ROUTES = {
+  '/api/v1/triggers': [],
+  '/api/v1/evidence/activation-gate': GATE_PASSED,
+  '/api/v1/evidence': EVIDENCE_RECORDS,
+  '/settlement/exceptions': [],
+  '/api/v1/audit': [],
+  '/api/v1/borrowers': [BORROWER],
+  '/api/v1/loans': [LOAN],
+  '/api/v1/risk/assessments': [],
+  '/api/v1/policies/eligibility': [],
+  '/api/v1/policies/versions': [POLICY_VERSION],
+  '/api/v1/policies/snapshots': [POLICY_SNAPSHOT],
+  '/api/v1/climate/datasets': [],
+}
+
 beforeEach(() => {
   signInForTests()
-  stubApi({
-    '/api/v1/triggers': [],
-    '/api/v1/evidence/activation-gate': GATE_PASSED,
-    '/api/v1/evidence': EVIDENCE_RECORDS,
-    '/settlement/exceptions': [],
-    '/api/v1/audit': [],
-  })
+  stubApi(DEFAULT_ROUTES)
 })
 
 function renderApp(path = '/') {
@@ -99,16 +142,27 @@ describe('MonsoonCover frontend foundation', () => {
     renderApp()
 
     expect(screen.getByLabelText('Data classification: REAL')).toBeVisible()
-    expect(screen.getByLabelText('Data classification: DERIVED')).toBeVisible()
+    expect(screen.getAllByLabelText('Data classification: DERIVED').length).toBeGreaterThan(0)
     expect(screen.getAllByLabelText('Data classification: SIMULATED').length).toBeGreaterThan(0)
   })
 
-  it('states that a trigger candidate requires insurer review and is not approval', () => {
+  it('states that a trigger candidate requires insurer review and is not approval', async () => {
+    stubApi({ ...DEFAULT_ROUTES, '/api/v1/triggers': [{ ...TRIGGER_DETAIL }] })
     renderApp()
 
-    expect(screen.getByLabelText('Canonical state: TRIGGER_CANDIDATE')).toBeVisible()
+    expect(await screen.findByLabelText('Canonical state: TRIGGER_CANDIDATE')).toBeVisible()
     expect(screen.getByText('Insurer review is required.')).toBeVisible()
     expect(screen.getByText(/This is not approval/i)).toBeVisible()
+    // The observed figure now comes from the backend, not from page copy.
+    expect(screen.getByText('184.0 mm')).toBeVisible()
+  })
+
+  it('shows the overview snapshot counts from the backend', async () => {
+    renderApp()
+
+    expect(await screen.findByText('Borrowers')).toBeVisible()
+    expect(screen.getByText('Outstanding')).toBeVisible()
+    expect(screen.getByText(/8,40,000/)).toBeVisible()
   })
 
   it('keeps insurer, orchestration, lender posting, and reconciliation stages distinct', () => {
@@ -128,36 +182,63 @@ describe('MonsoonCover frontend foundation', () => {
     expect(screen.getByRole('heading', { name: 'Correlation-linked audit trail' })).toBeVisible()
   })
 
-  it('filters the synthetic portfolio without dropping its provenance labels', async () => {
+  it('lists borrowers from the backend and filters them without dropping provenance labels', async () => {
     const user = userEvent.setup()
     renderApp('/portfolio')
 
     expect(screen.getByRole('heading', { name: 'Portfolio exposure' })).toBeVisible()
-    expect(screen.getByText('ABC Textiles')).toBeVisible()
-    expect(screen.getByText('Showing 6 of 6 synthetic records')).toBeVisible()
+    expect(await screen.findByRole('link', { name: /ABC Textiles/ })).toBeVisible()
+    expect(screen.getByText('Showing 1 of 1 records')).toBeVisible()
 
-    await user.type(screen.getByRole('searchbox', { name: 'Search portfolio' }), 'Navsari')
+    await user.type(screen.getByRole('searchbox', { name: 'Search portfolio' }), 'Bharuch')
 
-    expect(screen.getByText('Coastal Cold Chain')).toBeVisible()
-    expect(screen.queryByText('ABC Textiles')).not.toBeInTheDocument()
-    expect(screen.getByText('Showing 1 of 6 synthetic records')).toBeVisible()
+    expect(screen.queryByRole('link', { name: /ABC Textiles/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Showing 0 of 1 records')).toBeVisible()
     expect(screen.getAllByLabelText('Data classification: SIMULATED').length).toBeGreaterThan(0)
   })
 
-  it('opens the primary demo borrower with clear decision boundaries', () => {
-    renderApp('/portfolio/MC-BOR-001')
+  it('shows the borrower zone rather than a city name alone', async () => {
+    renderApp('/portfolio')
 
-    expect(screen.getByRole('heading', { name: 'ABC Textiles' })).toBeVisible()
-    expect(screen.getByText('Insurer decision required')).toBeVisible()
-    expect(screen.getByText(/It is not an approved claim or payout/i)).toBeVisible()
+    expect(await screen.findByText(/SURAT-DEMO-Z1 · Surat, Gujarat/)).toBeVisible()
+  })
+
+  it('opens a borrower with their real facility, snapshot and decision boundaries', async () => {
+    renderApp('/portfolio/bor-1')
+
+    expect(await screen.findByRole('heading', { name: 'ABC Textiles' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Coverage snapshot' })).toBeVisible()
+    expect(screen.getByText('MC-PS-2026-0142-v1')).toBeVisible()
     expect(screen.getByText('Consent record captured')).toBeVisible()
     expect(screen.getByText(/does not make, change, or recommend a lending decision/i)).toBeVisible()
+    expect(screen.getByText(/Working-capital loan/)).toBeVisible()
+  })
+
+  it('shows the policy version, its snapshot and the evidence gate', async () => {
+    renderApp('/policies')
+
+    expect(await screen.findByRole('heading', { name: 'Extreme rainfall protection reference' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Evidence-gate register' })).toBeVisible()
+    expect(screen.getByText('MC-PS-2026-0142-v1')).toBeVisible()
+    // The cover period and the event window are shown as distinct terms.
+    expect(screen.getByText('2026-06-15 → 2026-09-30')).toBeVisible()
+    expect(screen.getByText('2026-08-27 → 2026-08-28')).toBeVisible()
+  })
+
+  it('shows a trigger candidate banner on the borrower when one exists', async () => {
+    stubApi({
+      ...DEFAULT_ROUTES,
+      '/api/v1/triggers': [{ ...TRIGGER_DETAIL }],
+    })
+    renderApp('/portfolio/bor-1')
+
+    expect(await screen.findByRole('heading', { name: 'Insurer decision required' })).toBeVisible()
+    expect(screen.getByText(/not an approved claim or payout/i)).toBeVisible()
   })
 
   it.each([
     ['/climate-risk', 'Climate risk', 'No hidden model outputs'],
-    ['/policies', 'Policies', 'Evidence-gate register'],
+    ['/policies', 'Policies', 'Term provenance'],
     ['/events-triggers', 'Events & triggers', 'Candidate provenance'],
     ['/reconciliation', 'Reconciliation', 'Insurer and lender records'],
   ])('renders the completed %s route', (path, pageHeading, sectionHeading) => {
