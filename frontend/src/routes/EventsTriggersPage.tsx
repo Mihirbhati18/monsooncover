@@ -1,6 +1,7 @@
 import { CanonicalStateBadge, DataClassificationBadge } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
 import { PageIntro } from '../components/foundation/PageIntro'
+import { GlassSurface } from '../visuals/glass/GlassSurface'
 
 const trace = [
   ['Observation window', '27–28 Aug 2026', 'SIMULATED'],
@@ -15,7 +16,7 @@ export function EventsTriggersPage() {
     <div className="space-y-6">
       <PageIntro eyebrow="Deterministic workflow evidence" title="Events & triggers" description="Inspect observed-event fixtures and calculation traces. A trigger candidate only starts insurer review—it never constitutes approval." classification="DERIVED" />
 
-      <section className="rounded-2xl border border-amber/25 bg-amber/7 p-5 sm:p-6" aria-labelledby="candidate-alert-heading">
+      <GlassSurface as="section" tint="amber" className="rounded-2xl p-5 sm:p-6" aria-labelledby="candidate-alert-heading">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
             <p className="section-kicker text-amber/60">Event · MC-DEMO-00427</p>
@@ -24,7 +25,7 @@ export function EventsTriggersPage() {
           </div>
           <CanonicalStateBadge state="TRIGGER_CANDIDATE" />
         </div>
-      </section>
+      </GlassSurface>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="surface-card overflow-hidden" aria-labelledby="trace-heading">
@@ -49,13 +50,13 @@ export function EventsTriggersPage() {
         <section className="surface-card p-5 sm:p-6" aria-labelledby="decision-heading">
           <p className="section-kicker">Independent control</p>
           <h2 id="decision-heading" className="section-title">Insurer sandbox decision</h2>
-          <div className="mt-6 rounded-xl border border-white/7 bg-deep/55 p-5">
+          <GlassSurface tint="neutral" className="mt-6 p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-slate-200">Decision state</p>
               <CanonicalStateBadge state="PENDING" />
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-500">Only an authenticated insurer-sandbox actor may approve, reject, or request more data. Decision controls are intentionally not exposed to this lender role.</p>
-          </div>
+          </GlassSurface>
           <div className="mt-4 grid grid-cols-3 gap-2" aria-label="Unavailable insurer actions">
             {['Approve', 'Reject', 'More data'].map((action) => (
               <button key={action} type="button" disabled className="rounded-lg border border-white/7 bg-white/3 px-2 py-2.5 text-xs font-semibold text-slate-600">{action}</button>
