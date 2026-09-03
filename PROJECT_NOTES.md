@@ -213,6 +213,24 @@ This section explains every feature after work begins: what was added, why it ex
 **Related repository:** commits `1342ac0` and `60dbf90` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
+### Feature: Backend foundation (spec Phase 2)
+
+**Status:** `IN PROGRESS` — foundation only; Phases 3-4 (the actual climate/policy/trigger pipeline and insurer/lender sandboxes) are not started.  
+**Added by:** Claude, for Mihirbhati18  
+**Date:** 2026-09-03  
+**Purpose:** Until this commit, the repository contained a frontend only, with every screen driven by hardcoded fixtures. Nothing computed, decided, posted, or reconciled anything. This starts the real backend the spec's Definition of MVP Done (§25) actually requires.  
+**How it works:** FastAPI app at `backend/`, structured exactly per spec §21 (`app/api`, `app/core`, `app/models`, `app/schemas`, `app/modules`). SQLAlchemy 2.x models, Alembic migrations, JWT auth with bcrypt password hashing, and role-based access control using the same four roles as the frontend (`lender`/`insurer`/`borrower`/`admin`).  
+**Technology used:** Exactly the frozen stack from spec §11.2 — FastAPI, Pydantic, PostgreSQL (via `psycopg`), SQLAlchemy 2.x, Alembic, PyJWT, bcrypt, pytest. No deviation.  
+**Logic and data flow:** `POST /api/v1/auth/login` → JWT → RBAC-guarded `borrowers`/`loans` CRUD. Every mutation calls `record_audit_event()` (the only function that writes to `audit_events` — no update/delete path exists anywhere in the codebase). `IdempotencyRecord` has a database `UniqueConstraint` on `(scope, idempotency_key)`; a replayed key returns the originally stored response rather than repeating the effect, per spec §13.  
+**Business boundaries:** This layer only registers borrowers/loans and authenticates users. It does not assess risk, match policy, evaluate triggers, or move money — those are Phases 3-4, not built yet.  
+**Data classification:** Seeded records are `SIMULATED`; audit events carry an explicit `classification` field on every row, matching spec §15.2 exactly (field names copied verbatim from the spec).  
+**Files changed:** New `backend/` tree (55 files) plus root `.env.example` and `docker-compose.yml`. See `backend/README.md` for the full file map and run instructions.  
+**Configuration:** `backend/.env` (copy from root `.env.example`) — `DATABASE_URL`, `JWT_SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `CORS_ORIGINS`. No secret values are committed.  
+**Testing performed:** 25 pytest tests (auth, RBAC, borrowers, loans, audit append-only contract, idempotency duplicate rejection) — all passing. Also verified live: ran the actual server, ran `scripts/seed_demo.py` against it, and hit `/health`, `/auth/login`, `/auth/me`, `/borrowers`, `/loans` over real HTTP, including confirming a 403 for a borrower role calling lender endpoints and a 401 with no token. Confirmed the seed script is idempotent by running it twice and checking the borrower count stayed at 1.  
+**Known limitations — read before extending this:** No PostgreSQL server is available in the current dev environment, so **the automated test suite runs against SQLite**, not the frozen PostgreSQL choice from spec §11.2. Every model deliberately uses portable SQLAlchemy types for this reason. The application's actual `DATABASE_URL` default is still PostgreSQL, and `docker-compose.yml` is provided to run real Postgres locally — spec §22 Phase 6 requires an offline rehearsal against the real stack before this is demo-ready, not just a green SQLite test run. Whoever has Postgres/Docker locally should run `alembic upgrade head` against real Postgres at least once and re-run the manual curl checks in the commit message before trusting this in a live demo.  
+**Related repository:** commit `a6c8c73` on `main`.  
+**Last updated by:** Claude — 2026-09-03.
+
 ## General notes
 
 Add short facts, reminders and project information here when they do not require a full decision or feature record.
