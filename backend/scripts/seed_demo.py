@@ -104,6 +104,47 @@ def _seed_evidence(db) -> int:
     return loaded
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CSV_PATH = REPO_ROOT / "data" / "historical" / "raw" / "surat_rainfall_2026.csv"
+MANIFEST_PATH = REPO_ROOT / "data" / "manifests" / "surat_rainfall_2026.json"
+
+
+def _seed_observations(db, dataset) -> int:
+    """Ingests the frozen dataset so climate exposure can be assessed
+    immediately.
+
+    This mirrors ordinary monitoring having already run: spec §17 assesses
+    climate risk at step 3, well before the historical replay at step 7, so
+    observations must already exist. Replay later re-runs the same pipeline
+    and skips records it has already stored."""
+
+    from app.adapters.climate.historical_csv import ingest
+    from app.models.climate import ClimateObservation
+
+    if not CSV_PATH.exists():
+        print(f"WARNING: {CSV_PATH} not found; climate risk cannot be assessed.")
+        return 0
+
+    loaded = 0
+    for observation in ingest(
+        csv_path=CSV_PATH,
+        manifest_path=MANIFEST_PATH,
+        dataset_id=dataset.id,
+        trigger_rule=TRIGGER_RULE,
+    ):
+        exists = db.scalar(
+            select(ClimateObservation).where(
+                ClimateObservation.provider == observation.provider,
+                ClimateObservation.provider_record_id == observation.provider_record_id,
+            )
+        )
+        if exists is None:
+            db.add(observation)
+            loaded += 1
+    db.flush()
+    return loaded
+
+
 def seed(reset: bool) -> None:
     if reset:
         Base.metadata.drop_all(bind=engine)
@@ -181,11 +222,13 @@ def seed(reset: bool) -> None:
             )
 
         evidence_count = _seed_evidence(db)
+        observation_count = _seed_observations(db, dataset)
 
         db.commit()
         print(f"Seeded {len(DEMO_USERS)} demo users, borrower '{borrower.name}' ({borrower.id}),")
         print(f"dataset DS-MC-RAIN-2026-01 and accepted policy snapshot {SNAPSHOT_REFERENCE}.")
         print(f"Evidence registry: {evidence_count} record(s) loaded from evidence/evidence_registry.csv.")
+        print(f"Climate observations: {observation_count} verified record(s) ingested.")
     finally:
         db.close()
 

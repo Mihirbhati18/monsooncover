@@ -55,6 +55,18 @@ def assess_borrower(
         db.scalars(select(ClimateObservation).where(ClimateObservation.zone_id == borrower.zone_id))
     )
 
+    # §6.5: missing data must surface, never pass silently. Assessing an
+    # empty history would return LOW, and a LOW band derived from no
+    # observations is more misleading than an error.
+    if not observations:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"No observations are held for zone {borrower.zone_id}, so exposure cannot be "
+                "assessed. Run a historical replay from Events & triggers first."
+            ),
+        )
+
     result = assess(
         zone_id=borrower.zone_id,
         peril=DEFAULT_PERIL,
