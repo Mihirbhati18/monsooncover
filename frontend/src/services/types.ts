@@ -101,6 +101,56 @@ export type ReconciliationRecord = {
   difference_reason: string | null
 }
 
+export type Loan = {
+  id: string
+  borrower_id: string
+  loan_type: string
+  principal_amount: string
+  emi_amount: string
+  outstanding_amount: string
+  currency: string
+}
+
+export type PolicyVersion = {
+  id: string
+  product_code: string
+  version: string
+  display_name: string
+  trigger_rule: Record<string, string>
+  disclosure_version: string
+  classification: DataClassification
+}
+
+export type PolicySnapshot = {
+  id: string
+  snapshot_reference: string
+  borrower_id: string
+  loan_id: string
+  policy_version_id: string
+  trigger_rule_snapshot: Record<string, string>
+  disclosure_version: string
+  consent_recorded_at_utc: string
+  accepted_at_utc: string
+  snapshot_checksum: string
+  state: 'PENDING_ISSUANCE' | 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'CANCELLED'
+}
+
+export type ClimateDataset = {
+  id: string
+  dataset_code: string
+  source_organization: string
+  source_uri_or_document: string
+  original_filename: string
+  geographic_coverage: string
+  temporal_coverage: string
+  parameter_definitions: string
+  original_sha256: string
+  transformation_version: string
+  known_gaps_or_caveats: string | null
+  license_notes: string | null
+  source_classification: DataClassification
+}
+
 export type EvidenceRecord = {
   id: string
   evidence_id: string

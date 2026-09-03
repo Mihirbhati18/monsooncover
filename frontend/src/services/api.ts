@@ -10,6 +10,7 @@ import type {
   ActivationGate,
   AuditEvent,
   Borrower,
+  ClimateDataset,
   CurrentUser,
   EvidenceRecord,
   ExceptionCase,
@@ -17,8 +18,11 @@ import type {
   InsurerDecisionOutcome,
   InsurerRequest,
   LenderPosting,
+  Loan,
   Payout,
   PolicyEligibility,
+  PolicySnapshot,
+  PolicyVersion,
   ReconciliationRecord,
   RiskAssessment,
   TriggerEvaluation,
@@ -102,6 +106,15 @@ export const api = {
   getCurrentUser: () => request<CurrentUser>('/api/v1/auth/me'),
 
   listBorrowers: () => request<Borrower[]>('/api/v1/borrowers'),
+
+  listLoans: (borrowerId?: string) =>
+    request<Loan[]>(borrowerId ? `/api/v1/loans?borrower_id=${borrowerId}` : '/api/v1/loans'),
+
+  listPolicyVersions: () => request<PolicyVersion[]>('/api/v1/policies/versions'),
+
+  listPolicySnapshots: () => request<PolicySnapshot[]>('/api/v1/policies/snapshots'),
+
+  listClimateDatasets: () => request<ClimateDataset[]>('/api/v1/climate/datasets'),
 
   listEvidence: () => request<EvidenceRecord[]>('/api/v1/evidence'),
 
