@@ -1,8 +1,36 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
+import { signInForTests, stubApi, stubApiFailure } from './test/apiStub'
+
+// Shaped like the backend's TriggerEvaluationDetail response.
+const TRIGGER_DETAIL = {
+  id: 'eval-1',
+  evaluation_key: 'MC-PS-2026-0142-v1|SURAT-DEMO-Z1|2026-08-27|2026-08-28|EXTREME_RAINFALL|precipitation|trigger-engine-v1',
+  correlation_id: 'EVENT-MC-2026-00427',
+  outcome: 'TRIGGER_CANDIDATE',
+  observed_value: '184.0',
+  strike_threshold: '160.0',
+  normalized_unit: 'mm',
+  window_start_local: '2026-08-27',
+  window_end_local: '2026-08-28',
+  evaluation_version: 'trigger-engine-v1',
+  evaluated_at_utc: '2026-09-03T12:00:00Z',
+  inputs_digest: 'f90c20645fe7b115b6832a05fa8466fa',
+  observation_count: 2,
+  trace_steps: [
+    { step: 'rule_loaded', description: 'Loaded accepted snapshot MC-PS-2026-0142-v1.', value: null },
+    { step: 'aggregated', description: 'Summed 2 eligible observation(s).', value: '184.0 mm' },
+    { step: 'compared', description: 'Compared aggregate against the accepted thresholds: 184.0 >= 160.0 mm.', value: '184.0 >= 160.0' },
+  ],
+}
+
+beforeEach(() => {
+  signInForTests()
+  stubApi({ '/api/v1/triggers': [] })
+})
 
 function renderApp(path = '/') {
   return render(
@@ -86,7 +114,7 @@ describe('MonsoonCover frontend foundation', () => {
   it.each([
     ['/climate-risk', 'Climate risk', 'No hidden model outputs'],
     ['/policies', 'Policies', 'Evidence-gate register'],
-    ['/events-triggers', 'Events & triggers', 'Calculation trace'],
+    ['/events-triggers', 'Events & triggers', 'Candidate provenance'],
     ['/reconciliation', 'Reconciliation', 'Insurer and lender records'],
   ])('renders the completed %s route', (path, pageHeading, sectionHeading) => {
     renderApp(path)
@@ -96,13 +124,46 @@ describe('MonsoonCover frontend foundation', () => {
     expect(screen.getByLabelText('Demo environment disclosure')).toBeVisible()
   })
 
-  it('keeps trigger candidate, insurer decision, and downstream actions distinct', () => {
+  it('shows an empty state when the engine has produced no evaluation yet', async () => {
     renderApp('/events-triggers')
 
+    expect(await screen.findByText('No evaluation has been run yet')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Replay historical climate event' })).toBeEnabled()
+  })
+
+  it('renders a real trigger evaluation and its calculation trace from the backend', async () => {
+    stubApi({
+      '/api/v1/triggers/eval-1': TRIGGER_DETAIL,
+      '/api/v1/triggers': [{ ...TRIGGER_DETAIL }],
+    })
+    renderApp('/events-triggers')
+
+    expect(await screen.findByRole('heading', { name: 'Insurer review required' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Calculation trace' })).toBeVisible()
     expect(screen.getAllByLabelText('Canonical state: TRIGGER_CANDIDATE').length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('Canonical state: PENDING')).toBeVisible()
+    expect(screen.getByText(/184.0 mm/)).toBeVisible()
     expect(screen.getByText(/has not approved a claim, initiated a payout, or instructed lender posting/i)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
+    expect(screen.getByText(/Compared aggregate against the accepted thresholds/)).toBeVisible()
+  })
+
+  it('surfaces a backend failure instead of silently showing nothing', async () => {
+    stubApi({
+      '/api/v1/triggers': new Response(JSON.stringify({ detail: 'Backend unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    })
+    renderApp('/events-triggers')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Backend unavailable')
+  })
+
+  it('returns the user to sign-in when the stored token is rejected', async () => {
+    stubApiFailure(401, 'Could not validate credentials')
+    renderApp('/')
+
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeVisible()
+    expect(localStorage.getItem('monsooncover.access_token')).toBeNull()
   })
 
   it('filters the evidence registry by classification', async () => {
