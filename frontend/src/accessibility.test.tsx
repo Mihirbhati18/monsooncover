@@ -1,10 +1,16 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 import { PortfolioMap } from './components/finance/PortfolioMap'
 import { demoPortfolio } from './features/portfolio/demoPortfolio'
+import { signInForTests, stubApi } from './test/apiStub'
 import { GlassSurface } from './visuals/glass/GlassSurface'
+
+beforeEach(() => {
+  signInForTests()
+  stubApi({ '/api/v1/triggers': [] })
+})
 
 const allRoutes = [
   '/',

@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './app/AppShell'
+import { AuthProvider } from './features/auth/AuthContext'
+import { useAuth } from './features/auth/useAuth'
 import { AdminPage } from './routes/AdminPage'
 import { BorrowerDetailPage } from './routes/BorrowerDetailPage'
 import { BorrowerExperiencePage } from './routes/BorrowerExperiencePage'
@@ -7,12 +9,13 @@ import { ClimateRiskPage } from './routes/ClimateRiskPage'
 import { EvidenceAuditPage } from './routes/EvidenceAuditPage'
 import { EventsTriggersPage } from './routes/EventsTriggersPage'
 import { InsurerSandboxPage } from './routes/InsurerSandboxPage'
+import { LoginPage } from './routes/LoginPage'
 import { OverviewPage } from './routes/OverviewPage'
 import { PoliciesPage } from './routes/PoliciesPage'
 import { PortfolioPage } from './routes/PortfolioPage'
 import { ReconciliationPage } from './routes/ReconciliationPage'
 
-function App() {
+function AuthenticatedRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
@@ -30,6 +33,21 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+  )
+}
+
+function AuthGate() {
+  const { status } = useAuth()
+
+  // MONSOONCOVER_SPEC.md §15.1: authentication for non-public screens.
+  return status === 'authenticated' ? <AuthenticatedRoutes /> : <LoginPage />
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
   )
 }
 
