@@ -46,6 +46,36 @@ class ReplayRequest(BaseModel):
     correlation_id: str = Field(min_length=3, max_length=255)
 
 
+class DryRunRequest(BaseModel):
+    """A proposed, inactive configuration to evaluate against history
+    (MONSOONCOVER_SPEC.md §6.7). Defaults reproduce the canonical demo."""
+
+    zone_id: str = Field(default="SURAT-DEMO-Z1")
+    event_window_start_local: str = Field(default="2026-08-27")
+    event_window_end_local: str = Field(default="2026-08-28")
+    strike_threshold: Decimal = Field(default=Decimal("160.0"), gt=0)
+    near_trigger_threshold: Decimal = Field(default=Decimal("128.0"), gt=0)
+
+
+class DryRunResult(BaseModel):
+    """§6.7: Dry Run never creates claims, payouts, lender postings or
+    borrower notifications. It is purely read-only — nothing is persisted,
+    so it can be re-run freely during configuration review."""
+
+    outcome: TriggerOutcome
+    observed_value: Decimal
+    strike_threshold: Decimal
+    near_trigger_threshold: Decimal
+    normalized_unit: str
+    window_start_local: str
+    window_end_local: str
+    eligible_observation_count: int
+    excluded_observation_count: int
+    inputs_digest: str
+    trace_steps: list[TraceStep]
+    persisted: bool = False
+
+
 class InsurerRequestRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

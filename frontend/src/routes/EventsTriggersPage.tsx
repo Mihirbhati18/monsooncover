@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { CanonicalStateBadge, DataClassificationBadge } from '../components/data-integrity/Badges'
 import { SourceReference } from '../components/data-integrity/SourceReference'
 import { PageIntro } from '../components/foundation/PageIntro'
+import { DryRunPanel } from '../components/finance/DryRunPanel'
 import { GlassSurface } from '../visuals/glass/GlassSurface'
 import { api } from '../services/api'
 import type { TriggerEvaluationDetail } from '../services/types'
@@ -223,6 +224,8 @@ export function EventsTriggersPage() {
           </div>
         </>
       ) : null}
+
+      <DryRunPanel />
 
       <section className="surface-card p-5 sm:p-6" aria-labelledby="event-source-heading">
         <p className="section-kicker">Evidence packet</p>

@@ -154,7 +154,7 @@ def evaluate(
         {
             "step": "rule_loaded",
             "description": (
-                f"Loaded accepted snapshot {snapshot_reference}: {trigger_rule['aggregation']} of "
+                f"Loaded rule from {snapshot_reference}: {trigger_rule['aggregation']} of "
                 f"{trigger_rule['parameter']} in {unit} over zone {trigger_rule['zone_id']} between "
                 f"{window_start} and {window_end} "
                 f"({trigger_rule['policy_timezone']}), settlement source {trigger_rule['required_provider']}. "

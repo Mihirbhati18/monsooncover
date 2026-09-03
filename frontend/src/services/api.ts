@@ -12,6 +12,7 @@ import type {
   Borrower,
   ClimateDataset,
   CurrentUser,
+  DryRunResult,
   EvidenceRecord,
   ExceptionCase,
   InsurerDecision,
@@ -142,6 +143,17 @@ export const api = {
     request<TriggerEvaluationDetail>('/api/v1/triggers/replay', {
       method: 'POST',
       body: JSON.stringify({ snapshot_reference: snapshotReference, correlation_id: correlationId }),
+    }),
+
+  runDryRun: (payload: {
+    event_window_start_local: string
+    event_window_end_local: string
+    strike_threshold: string
+    near_trigger_threshold: string
+  }) =>
+    request<DryRunResult>('/api/v1/triggers/dry-run', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   listInsurerRequests: () => request<InsurerRequest[]>('/api/v1/settlement/insurer-requests'),

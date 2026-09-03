@@ -271,6 +271,37 @@ describe('MonsoonCover frontend foundation', () => {
     expect(screen.getByText(/Compared aggregate against the accepted thresholds/)).toBeVisible()
   })
 
+  it('runs a dry run and states plainly that nothing was persisted', async () => {
+    const user = userEvent.setup()
+    stubApi({
+      ...DEFAULT_ROUTES,
+      '/api/v1/triggers/dry-run': {
+        outcome: 'NO_TRIGGER',
+        observed_value: '58.9',
+        strike_threshold: '160.0',
+        near_trigger_threshold: '128.0',
+        normalized_unit: 'mm',
+        window_start_local: '2026-07-01',
+        window_end_local: '2026-07-31',
+        eligible_observation_count: 2,
+        excluded_observation_count: 12,
+        inputs_digest: 'abc123',
+        trace_steps: [
+          { step: 'compared', description: 'Compared aggregate against the accepted thresholds: 58.9 < 128.0 mm.', value: null },
+        ],
+        persisted: false,
+      },
+    })
+    renderApp('/events-triggers')
+
+    await user.click(await screen.findByRole('button', { name: 'A quiet July' }))
+
+    // The same engine that produces candidates also produces NO_TRIGGER.
+    expect(await screen.findByLabelText('Canonical state: NO_TRIGGER')).toBeVisible()
+    expect(screen.getByText('58.9 mm')).toBeVisible()
+    expect(screen.getByText('NOTHING PERSISTED')).toBeVisible()
+  })
+
   it('surfaces a backend failure instead of silently showing nothing', async () => {
     stubApi({
       '/api/v1/triggers': new Response(JSON.stringify({ detail: 'Backend unavailable' }), {
