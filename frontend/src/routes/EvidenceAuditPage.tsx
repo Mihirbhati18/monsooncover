@@ -2,16 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { CanonicalStateBadge, DataClassificationBadge, type DataClassification } from '../components/data-integrity/Badges'
 import { PageIntro } from '../components/foundation/PageIntro'
 import { api } from '../services/api'
-import type { AuditEvent, ExceptionCase } from '../services/types'
+import type { ActivationGate, AuditEvent, EvidenceRecord, ExceptionCase } from '../services/types'
 
-// Interface fixtures: the backend has no Evidence Registry yet (spec §4).
-// These describe what will be registered, not records the system holds.
-const evidence: Array<{ id: string; title: string; entity: string; classification: DataClassification; status: string }> = [
-  { id: 'EV-001', title: 'Policy wording reference', entity: 'MC-DEMO-POL-RAIN-01', classification: 'REAL', status: 'REGISTERED' },
-  { id: 'EV-002', title: 'Surat trigger configuration', entity: 'MC-DEMO-POL-RAIN-01', classification: 'SIMULATED', status: 'DISCLOSED' },
-  { id: 'EV-003', title: 'Rainfall aggregation trace', entity: 'MC-DEMO-00427', classification: 'DERIVED', status: 'VERIFIED' },
-  { id: 'EV-004', title: 'Borrower consent snapshot', entity: 'MC-PS-2026-0142-v1', classification: 'SIMULATED', status: 'RECORDED' },
-]
+const PRODUCT_CODE = 'MC-DEMO-POL-RAIN-01'
 
 function formatTimestamp(iso: string): string {
   const parsed = new Date(iso)
@@ -20,7 +13,12 @@ function formatTimestamp(iso: string): string {
 
 export function EvidenceAuditPage() {
   const [filter, setFilter] = useState<'ALL' | DataClassification>('ALL')
-  const visibleEvidence = useMemo(() => evidence.filter((item) => filter === 'ALL' || item.classification === filter), [filter])
+  const [evidence, setEvidence] = useState<EvidenceRecord[]>([])
+  const [gate, setGate] = useState<ActivationGate | null>(null)
+  const visibleEvidence = useMemo(
+    () => evidence.filter((item) => filter === 'ALL' || item.classification === filter),
+    [evidence, filter],
+  )
 
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
   const [exceptions, setExceptions] = useState<ExceptionCase[]>([])
@@ -30,11 +28,18 @@ export function EvidenceAuditPage() {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([api.listAuditEvents(), api.listExceptions()])
-      .then(([events, cases]) => {
+    Promise.all([
+      api.listAuditEvents(),
+      api.listExceptions(),
+      api.listEvidence(),
+      api.getActivationGate(PRODUCT_CODE),
+    ])
+      .then(([events, cases, records, gateResult]) => {
         if (cancelled) return
         setAuditEvents(events)
         setExceptions(cases)
+        setEvidence(records)
+        setGate(gateResult)
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
@@ -64,18 +69,63 @@ export function EvidenceAuditPage() {
               <label><span className="sr-only">Filter evidence classification</span><select value={filter} onChange={(event) => setFilter(event.target.value as 'ALL' | DataClassification)} className="h-9 rounded-lg border border-white/10 bg-deep/65 px-3 text-xs text-slate-300 outline-none focus:border-cyan/60"><option value="ALL">All classes</option><option value="REAL">Real</option><option value="DERIVED">Derived</option><option value="SIMULATED">Simulated</option></select></label>
             </div>
             <p aria-live="polite" className="mt-3 text-xs text-slate-500">Showing {visibleEvidence.length} evidence records</p>
-            <p className="mt-1.5 text-[0.65rem] leading-5 text-slate-600">
-              Interface fixtures. The Evidence Registry is not implemented in the backend yet, so
-              these describe intended records rather than stored ones.
-            </p>
+
+            {gate ? (
+              <div
+                className={`mt-4 rounded-xl border p-4 ${
+                  gate.can_activate
+                    ? 'border-teal/25 bg-teal/6'
+                    : 'border-danger/25 bg-danger/7'
+                }`}
+              >
+                <p className={`text-xs font-semibold ${gate.can_activate ? 'text-teal' : 'text-danger'}`}>
+                  Activation gate · {gate.can_activate ? 'PASSED' : 'BLOCKED'}
+                </p>
+                <p className="mt-1.5 text-[0.68rem] leading-5 text-slate-400">{gate.summary}</p>
+                {gate.blocking_errors.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {gate.blocking_errors.map((message) => (
+                      <li key={message} className="text-[0.65rem] leading-5 text-danger/80">
+                        {message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <p className="mt-2 text-[0.62rem] leading-5 text-slate-600">
+                  A policy cannot be activated unless every settlement-critical field carries
+                  evidence. Missing evidence is a blocking error, not a warning.
+                </p>
+              </div>
+            ) : null}
           </div>
           <div className="divide-y divide-white/6">
             {visibleEvidence.map((item) => (
               <article key={item.id} className="p-5 sm:px-6">
-                <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[0.65rem] text-slate-600">{item.id} · {item.entity}</p><h3 className="mt-1.5 text-sm font-semibold text-slate-300">{item.title}</h3></div><DataClassificationBadge classification={item.classification} /></div>
-                <div className="mt-3"><CanonicalStateBadge state={item.status} /></div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[0.65rem] text-slate-600">
+                      {item.evidence_id} · {item.subject_type}.{item.subject_field}
+                    </p>
+                    <h3 className="mt-1.5 text-sm font-semibold text-slate-300">{item.value_or_claim}</h3>
+                  </div>
+                  <DataClassificationBadge classification={item.classification} />
+                </div>
+                <p className="mt-2 text-[0.68rem] leading-5 text-slate-500">
+                  {item.simulation_reason ?? item.transformation_or_formula ?? item.source_title ?? ''}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <CanonicalStateBadge state={item.review_status} />
+                  {item.reviewer ? (
+                    <span className="text-[0.62rem] text-slate-600">approved by {item.reviewer}</span>
+                  ) : null}
+                </div>
               </article>
             ))}
+            {visibleEvidence.length === 0 ? (
+              <p className="p-6 text-xs text-slate-500">
+                No evidence records for this classification.
+              </p>
+            ) : null}
           </div>
         </section>
 

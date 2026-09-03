@@ -2,6 +2,7 @@ from app.core.database import Base
 from app.models.audit import AuditEvent
 from app.models.borrower import Borrower
 from app.models.climate import ClimateDataset, ClimateObservation, QualityStatus
+from app.models.evidence import EvidenceRecord
 from app.models.idempotency import IdempotencyRecord
 from app.models.loan import Loan
 from app.models.policy import BorrowerPolicySnapshot, PolicyState, PolicyVersion
@@ -32,6 +33,7 @@ __all__ = [
     "ClimateObservation",
     "ExceptionCase",
     "ExceptionState",
+    "EvidenceRecord",
     "ExposureBand",
     "PolicyEligibility",
     "RiskAssessment",

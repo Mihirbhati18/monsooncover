@@ -101,6 +101,36 @@ export type ReconciliationRecord = {
   difference_reason: string | null
 }
 
+export type EvidenceRecord = {
+  id: string
+  evidence_id: string
+  subject_type: string
+  subject_field: string
+  value_or_claim: string
+  classification: DataClassification
+  source_title: string | null
+  source_organization: string | null
+  source_url_or_local_path: string | null
+  simulation_reason: string | null
+  transformation_or_formula: string | null
+  units: string | null
+  geographic_scope: string | null
+  checksum_sha256: string | null
+  used_by: string | null
+  review_status: string
+  reviewer: string | null
+  notes: string | null
+  registered_at_utc: string
+}
+
+export type ActivationGate = {
+  product_code: string
+  can_activate: boolean
+  summary: string
+  satisfied_fields: string[]
+  blocking_errors: string[]
+}
+
 export type ExposureBand = 'LOW' | 'MODERATE' | 'HIGH'
 
 export type MethodologyStep = {

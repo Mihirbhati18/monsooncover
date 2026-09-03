@@ -36,9 +36,44 @@ const INSURER_REQUEST = {
   adapter_name: 'SandboxInsurerAdapter',
 }
 
+const EVIDENCE_RECORDS = [
+  {
+    id: 'ev-1', evidence_id: 'EV-009', subject_type: 'policy_version', subject_field: 'timezone',
+    value_or_claim: 'Asia/Kolkata', classification: 'REAL',
+    source_title: 'IANA Time Zone Database', source_organization: 'IANA',
+    source_url_or_local_path: 'https://www.iana.org/time-zones', simulation_reason: null,
+    transformation_or_formula: null, units: null, geographic_scope: 'India',
+    checksum_sha256: null, used_by: 'trigger_engine', review_status: 'APPROVED',
+    reviewer: 'admin@demo.monsooncover.local', notes: null, registered_at_utc: '2026-09-04T09:00:00Z',
+  },
+  {
+    id: 'ev-2', evidence_id: 'EV-004', subject_type: 'policy_version', subject_field: 'strike',
+    value_or_claim: '160.0', classification: 'SIMULATED',
+    source_title: null, source_organization: null, source_url_or_local_path: null,
+    simulation_reason: 'No authorized geography-specific strike was available.',
+    transformation_or_formula: null, units: 'mm', geographic_scope: 'SURAT-DEMO-Z1',
+    checksum_sha256: null, used_by: 'trigger_engine', review_status: 'APPROVED',
+    reviewer: 'admin@demo.monsooncover.local', notes: null, registered_at_utc: '2026-09-04T09:00:00Z',
+  },
+]
+
+const GATE_PASSED = {
+  product_code: 'MC-DEMO-POL-RAIN-01',
+  can_activate: true,
+  summary: 'All 13 settlement-critical fields carry evidence.',
+  satisfied_fields: ['peril', 'strike'],
+  blocking_errors: [],
+}
+
 beforeEach(() => {
   signInForTests()
-  stubApi({ '/api/v1/triggers': [] })
+  stubApi({
+    '/api/v1/triggers': [],
+    '/api/v1/evidence/activation-gate': GATE_PASSED,
+    '/api/v1/evidence': EVIDENCE_RECORDS,
+    '/settlement/exceptions': [],
+    '/api/v1/audit': [],
+  })
 })
 
 function renderApp(path = '/') {
@@ -175,9 +210,11 @@ describe('MonsoonCover frontend foundation', () => {
     expect(localStorage.getItem('monsooncover.access_token')).toBeNull()
   })
 
-  it('filters the evidence registry by classification', async () => {
+  it('filters the real evidence registry by classification', async () => {
     const user = userEvent.setup()
     renderApp('/evidence-audit')
+
+    expect(await screen.findByText('Showing 2 evidence records')).toBeVisible()
 
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Filter evidence classification' }),
@@ -185,8 +222,35 @@ describe('MonsoonCover frontend foundation', () => {
     )
 
     expect(screen.getByText('Showing 1 evidence records')).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Policy wording reference' })).toBeVisible()
-    expect(screen.queryByRole('heading', { name: 'Surat trigger configuration' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Asia/Kolkata' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: '160.0' })).not.toBeInTheDocument()
+  })
+
+  it('shows the activation gate result alongside the registry', async () => {
+    renderApp('/evidence-audit')
+
+    expect(await screen.findByText('Activation gate · PASSED')).toBeVisible()
+    expect(screen.getByText(/All 13 settlement-critical fields carry evidence/)).toBeVisible()
+    expect(screen.getByText(/Missing evidence is a blocking error, not a warning/)).toBeVisible()
+  })
+
+  it('shows blocking errors when the activation gate refuses', async () => {
+    stubApi({
+      '/api/v1/evidence/activation-gate': {
+        product_code: 'MC-DEMO-POL-RAIN-01',
+        can_activate: false,
+        summary: '2 blocking evidence error(s).',
+        satisfied_fields: ['peril'],
+        blocking_errors: ["'strike': no evidence record registered."],
+      },
+      '/api/v1/evidence': EVIDENCE_RECORDS,
+      '/settlement/exceptions': [],
+      '/api/v1/audit': [],
+    })
+    renderApp('/evidence-audit')
+
+    expect(await screen.findByText('Activation gate · BLOCKED')).toBeVisible()
+    expect(screen.getByText("'strike': no evidence record registered.")).toBeVisible()
   })
 
   it('renders role-scoped navigation for the insurer sandbox', () => {
@@ -435,6 +499,8 @@ describe('MonsoonCover frontend foundation', () => {
         },
       ],
       '/settlement/exceptions': [],
+      '/api/v1/evidence/activation-gate': GATE_PASSED,
+      '/api/v1/evidence': EVIDENCE_RECORDS,
     })
     renderApp('/evidence-audit')
 
