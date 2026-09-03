@@ -159,6 +159,24 @@ This section explains every feature after work begins: what was added, why it ex
 **Business boundaries:** `TRIGGER_CANDIDATE` is not approval; insurer decisions, lender posting and reconciliation remain separate actions.  
 **Related files:** `MONSOONCOVER_SPEC.md`, `docs/FRONTEND_PLAN.md`.
 
+### Feature: Portfolio geography map and exposure chart
+
+**Status:** `IMPLEMENTED`  
+**Added by:** Claude, for Mihirbhati18  
+**Date:** 2026-09-03  
+**Purpose:** Begin `docs/FRONTEND_PLAN.md` phase 5 (Recharts and Leaflet) so Portfolio and Climate Risk show real geographic and exposure visualizations instead of static placeholder cards.  
+**User experience:** Portfolio and Climate Risk pages show a dark-themed Leaflet map with city-level circle markers colored by illustrative risk band, a legend, and popups with borrower summary. Climate Risk's concentration profile now uses a Recharts horizontal bar chart instead of manual CSS bars.  
+**How it works:** `PortfolioMap` (react-leaflet, standard OpenStreetMap raster tiles with a CSS dark-mode filter, no API key or proprietary provider) and `ExposureBarChart` (Recharts) are shared components under `src/components/finance/`. Demo borrower fixtures in `demoPortfolio.ts` gained city-level `latitude`/`longitude` fields.  
+**Technology used:** `leaflet`, `react-leaflet`, `recharts` (all pre-approved in `docs/FRONTEND_PLAN.md` §9).  
+**Business boundaries:** Purely presentational; map/chart do not compute or imply credit, pricing, or trigger decisions. All values remain labelled `SIMULATED`.  
+**Data classification:** `SIMULATED` throughout; markers use city-level coordinates only, never precise borrower addresses.  
+**Files changed:** `frontend/src/components/finance/PortfolioMap.tsx`, `frontend/src/components/finance/ExposureBarChart.tsx`, `frontend/src/routes/PortfolioPage.tsx`, `frontend/src/routes/ClimateRiskPage.tsx`, `frontend/src/features/portfolio/demoPortfolio.ts`, `frontend/src/index.css`, `frontend/src/test/setup.ts`.  
+**Testing performed:** `npm run typecheck`, `npm run test` (17/17 passing), `npm run build`, `npm run lint` all clean; manually verified in a running browser (map tiles, markers, popups, bar chart all render with no console errors).  
+**Fallbacks and accessibility:** Under `jsdom` (component tests), `PortfolioMap` renders a static list instead of mounting Leaflet, since jsdom cannot provide real layout/`ResizeObserver` — same jsdom-guard pattern already used by `LiquidWeatherCanvas`. A `ResizeObserver` polyfill was added to `test/setup.ts` for Recharts' `ResponsiveContainer`.  
+**Known limitations:** Production bundle grew to ~823KB (~241KB gzip) after adding `leaflet` + `recharts`; route-level lazy-loading (per plan §10) was deliberately deferred rather than risk breaking the existing synchronous test assertions — flagged as follow-up. R3F climate-exposure/event-replay scenes, the `GlassSurface` component system, and ShaderGradient hero remain unimplemented (plan phases 6–8).  
+**Related repository:** <https://github.com/Mihirbhati18/monsooncover>, commit `9f2dad4` on `main` (pushed directly per Mihir's instruction, bypassing the usual branch-protection PR workflow to avoid losing work mid-session).  
+**Last updated by:** Claude — 2026-09-03.
+
 ## General notes
 
 Add short facts, reminders and project information here when they do not require a full decision or feature record.
