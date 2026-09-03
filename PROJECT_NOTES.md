@@ -231,6 +231,27 @@ This section explains every feature after work begins: what was added, why it ex
 **Related repository:** commit `a6c8c73` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
+### Feature: Trigger engine and the complete settlement chain (spec Phases 3-4)
+
+**Status:** `IMPLEMENTED` at the service layer; **not yet exposed through any API route**, so the frontend still runs on hardcoded fixtures.  
+**Added by:** Claude, for Mihirbhati18  
+**Date:** 2026-09-03  
+**Purpose:** Make the specification §25 chain actually execute. Before this, `184 mm` and `TRIGGER_CANDIDATE` existed only as static text in a React screen.  
+**How it works:** `data/historical/raw/surat_rainfall_2026.csv` (checksummed, with a §6.4 manifest) → `HistoricalCSVProvider` walks records through `RAW → NORMALIZED → VALIDATED → VERIFIED_REFERENCE_DATA` → the deterministic Trigger Engine evaluates them against the immutable accepted policy snapshot → `SandboxInsurerAdapter` holds the candidate at `PENDING` for a human decision → payout → `SandboxLenderAdapter` posting → reconciliation → correlation-linked audit trail.  
+**Key design decisions worth preserving:**
+- `TriggerOutcome` has **no** `CLAIM_APPROVED` member. §7.3's rule is enforced by the type system, not by convention, so the engine cannot express approval even by accident.
+- The Trigger Engine is pure and performs no side effects — it cannot submit, approve, pay or post.
+- Eligibility is checked twice, independently: once during ingestion and again in the engine. The duplication is deliberate so a bug in one layer cannot admit bad data into a settlement decision alone.
+- A dataset failing its manifest checksum **raises and stops the pipeline** rather than warning and continuing.
+- §10.4 transition invariants are raised errors, not comments: a payout before insurer approval, or a posting before a payout, is impossible to produce by calling the functions in the wrong order.
+- Reconciliation mismatches preserve both source amounts and open an `ExceptionCase`; source records are never overwritten to force agreement (§14).  
+**Data classification — read this before demoing:** the rainfall dataset is **`SIMULATED`**, not `REAL`, and its manifest says so explicitly. It is a synthetic fixture generated in-repository, not observation data from any meteorological agency. Replacing it with a registered public dataset (and updating the manifest's source fields and checksum) is what would make it `REAL` under §4. Do not describe it as real data to judges.  
+**Files changed:** `backend/app/models/{climate,policy,trigger,settlement}.py`, `backend/app/modules/trigger_engine/engine.py`, `backend/app/modules/settlement/orchestrator.py`, `backend/app/adapters/{climate,insurer,lender}/`, `backend/scripts/run_demo_chain.py`, `data/historical/raw/`, `data/manifests/`.  
+**Testing performed:** 40 new tests (65 backend total, all passing) covering threshold bands including the exact-strike boundary, every §6.5 exclusion rule, determinism under reordered input, checksum tamper detection, refusal to substitute a non-authorized provider even when its data would satisfy the rule, all four transition invariants, and idempotent replay at submission/payout/posting. Verified live via `python -m scripts.run_demo_chain`: 184.0 mm → `TRIGGER_CANDIDATE` → insurer approves ₹40,000 → balance 840,000 → 800,000 → `RECONCILED`, replay changes nothing, 5 audit events on one correlation ID.  
+**Known limitations:** No API routes expose any of this yet — wiring the frontend to it is the next step, and there is still no shared API contract between frontend and backend, so their types will drift. Risk Engine, policy matching and evidence gates (rest of Phase 3) are not built. Migrations are still only verified against SQLite, not PostgreSQL.  
+**Related repository:** commits `46c4663` and `84e5e65` on `main`.  
+**Last updated by:** Claude — 2026-09-03.
+
 ## General notes
 
 Add short facts, reminders and project information here when they do not require a full decision or feature record.
