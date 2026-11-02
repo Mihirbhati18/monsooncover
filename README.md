@@ -56,6 +56,6 @@ npm run dev                   # http://localhost:5173
 - [`RUN_DEMO.md`](./RUN_DEMO.md): step-by-step demo path
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md): branch and PR workflow
 
-## Team
+## Author
 
-Built by **Mihir Bhati** ([@Mihirbhati18](https://github.com/Mihirbhati18)) and **Ahana Sharan**.
+Built by **Mihir Bhati** ([@Mihirbhati18](https://github.com/Mihirbhati18)).

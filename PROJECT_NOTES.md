@@ -193,7 +193,7 @@ This section explains every feature after work begins: what was added, why it ex
 **Testing performed:** `npm run typecheck`, `npm run lint`, `npm run test` (17/17), `npm run build` all clean; each tint verified in a running browser with no console errors.  
 **Fallbacks and accessibility:** An `@supports` block falls back to opaque navy panels where `backdrop-filter` is unsupported, satisfying plan §10. Text sits on solid tinted backgrounds rather than over imagery, so contrast is preserved.  
 **Known limitations:** Bundle size unchanged (CSS only). Plan phases 7 (ShaderGradient hero) and 8 (R3F climate-exposure and event-replay scenes) remain unimplemented.  
-**Related repository:** commit `8206002` on `main`.  
+**Related repository:** commit `2b2d82a` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
 ### Feature: Accessibility contract tests and bundle code-splitting
@@ -210,7 +210,7 @@ This section explains every feature after work begins: what was added, why it ex
 **Testing performed:** 48 tests passing, up from 17. `typecheck`, `lint` and `build` clean; lazy chunks verified loading correctly in a running browser.  
 **Measured result:** Initial JS fell from 823 kB (241 kB gzip) to 310 kB (91 kB gzip) — a 62% reduction in initial download — with `PortfolioMap` (155 kB) and `ExposureBarChart` (358 kB) now separate on-demand chunks. The 500 kB chunk warning is resolved.  
 **Known limitations:** Accessibility checks are jsdom-based assertions, not a full axe audit; real WebGL-failure and cross-viewport responsive testing (rest of phase 9) and visual regression (phase 10) still need a browser-driving test tool. Plan phases 7 (ShaderGradient hero) and 8 (R3F scenes) remain unimplemented and would require dependencies not yet agreed.  
-**Related repository:** commits `1342ac0` and `60dbf90` on `main`.  
+**Related repository:** commits `611b84c` and `76929ac` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
 ### Feature: Backend foundation (spec Phase 2)
@@ -228,7 +228,7 @@ This section explains every feature after work begins: what was added, why it ex
 **Configuration:** `backend/.env` (copy from root `.env.example`) — `DATABASE_URL`, `JWT_SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `CORS_ORIGINS`. No secret values are committed.  
 **Testing performed:** 25 pytest tests (auth, RBAC, borrowers, loans, audit append-only contract, idempotency duplicate rejection) — all passing. Also verified live: ran the actual server, ran `scripts/seed_demo.py` against it, and hit `/health`, `/auth/login`, `/auth/me`, `/borrowers`, `/loans` over real HTTP, including confirming a 403 for a borrower role calling lender endpoints and a 401 with no token. Confirmed the seed script is idempotent by running it twice and checking the borrower count stayed at 1.  
 **Known limitations — read before extending this:** No PostgreSQL server is available in the current dev environment, so **the automated test suite runs against SQLite**, not the frozen PostgreSQL choice from spec §11.2. Every model deliberately uses portable SQLAlchemy types for this reason. The application's actual `DATABASE_URL` default is still PostgreSQL, and `docker-compose.yml` is provided to run real Postgres locally — spec §22 Phase 6 requires an offline rehearsal against the real stack before this is demo-ready, not just a green SQLite test run. Whoever has Postgres/Docker locally should run `alembic upgrade head` against real Postgres at least once and re-run the manual curl checks in the commit message before trusting this in a live demo.  
-**Related repository:** commit `a6c8c73` on `main`.  
+**Related repository:** commit `781565a` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
 ### Feature: Trigger engine and the complete settlement chain (spec Phases 3-4)
@@ -249,7 +249,7 @@ This section explains every feature after work begins: what was added, why it ex
 **Files changed:** `backend/app/models/{climate,policy,trigger,settlement}.py`, `backend/app/modules/trigger_engine/engine.py`, `backend/app/modules/settlement/orchestrator.py`, `backend/app/adapters/{climate,insurer,lender}/`, `backend/scripts/run_demo_chain.py`, `data/historical/raw/`, `data/manifests/`.  
 **Testing performed:** 40 new tests (65 backend total, all passing) covering threshold bands including the exact-strike boundary, every §6.5 exclusion rule, determinism under reordered input, checksum tamper detection, refusal to substitute a non-authorized provider even when its data would satisfy the rule, all four transition invariants, and idempotent replay at submission/payout/posting. Verified live via `python -m scripts.run_demo_chain`: 184.0 mm → `TRIGGER_CANDIDATE` → insurer approves ₹40,000 → balance 840,000 → 800,000 → `RECONCILED`, replay changes nothing, 5 audit events on one correlation ID.  
 **Known limitations:** No API routes expose any of this yet — wiring the frontend to it is the next step, and there is still no shared API contract between frontend and backend, so their types will drift. Risk Engine, policy matching and evidence gates (rest of Phase 3) are not built. Migrations are still only verified against SQLite, not PostgreSQL.  
-**Related repository:** commits `46c4663` and `84e5e65` on `main`.  
+**Related repository:** commits `42f21fb` and `12a9461` on `main`.  
 **Last updated by:** Claude — 2026-09-03.
 
 ## General notes
